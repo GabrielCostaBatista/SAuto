@@ -11,13 +11,13 @@
 ---
 
 
-# Installing Multipass and ROS Noetic on macOS
+# 1. Installing Multipass and ROS Noetic on macOS
 
 This guide explains how to install Multipass on macOS and set up ROS Noetic inside an Ubuntu 20.04 Multipass VM, following the ROS installation tutorial for Ubuntu 20.04 from https://varhowto.com/install-ros-noetic-ubuntu-20-04.
 
 ---
 
-## 1. Install Multipass on macOS
+## 1.1. Install Multipass on macOS
 
 Multipass allows you to run Ubuntu VMs easily on macOS.
 
@@ -36,7 +36,7 @@ Multipass allows you to run Ubuntu VMs easily on macOS.
 
 ---
 
-## 2. Install ROS Noetic inside the Ubuntu 20.04 VM
+## 1.2. Install ROS Noetic inside the Ubuntu 20.04 VM
 
 Follow the steps below inside the VM shell (`ros1-vm`):
 
@@ -67,7 +67,7 @@ If no errors appear everything should be ok.
 
 ---
 
-## 3. Optional: Mount a Shared Folder Between macOS and the VM
+## 1.3. Optional: Mount a Shared Folder Between macOS and the VM
 
 You might want to edit code directly in your PC instead of working inside the VM (to use your usual code editor for example). To share files between your macOS host and the Ubuntu VM:
 
@@ -84,7 +84,7 @@ You might want to edit code directly in your PC instead of working inside the VM
 
 ---
 
-## 4. Additional Tips
+## 1.4. Additional Tips
 
 - Use `multipass list` to check running instances and their IP addresses.  
 - Use `multipass exec ros1-vm -- <command>` to run commands inside the VM without opening a shell.  
