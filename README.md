@@ -133,8 +133,6 @@ You might want to edit code directly in your PC instead of working inside the VM
 
 # 2. Setting Up Foxglove Studio with ROS Noetic (VM to MacOS)
 
-<img src="https://foxglove.dev/images/studio_macos_hero.png" width="300" align="right" alt="Foxglove Studio">
-
 Foxglove Studio is a modern visualization tool for ROS data, similar to RViz, but with a web and desktop interface and advanced features.
 
 ## 2.1. Install the Foxglove Bridge in ROS VM
