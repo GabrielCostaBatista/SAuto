@@ -1,12 +1,21 @@
 # Table of Contents
 
 - [1. Installing Multipass and ROS Noetic on macOS](#1-installing-multipass-and-ros-noetic-on-macos)
-- [2. Setting Up Foxglove Studio with ROS Noetic](#2-setting-up-foxglove-studio-with-ros-noetic)
+  - [1.1. Install Multipass on macOS](#11-install-multipass-on-macos)
+  - [1.2. Install ROS Noetic inside the Ubuntu 20.04 VM](#12-install-ros-noetic-inside-the-ubuntu-2004-vm)
+  - [1.3. Optional: Mount a Shared Folder Between macOS and the VM](#13-optional-mount-a-shared-folder-between-macos-and-the-vm)
+  - [1.4. Additional Tips](#14-additional-tips)
+- [2. Setting Up Foxglove Studio with ROS Noetic (VM to MacOS)](#2-setting-up-foxglove-studio-with-ros-noetic-vm-to-macos)
   - [2.1. Install the Foxglove Bridge in ROS VM](#21-install-the-foxglove-bridge-in-ros-vm)
   - [2.2. Launch the Foxglove Bridge](#22-launch-the-foxglove-bridge)
   - [2.3. Install Foxglove Studio on macOS](#23-install-foxglove-studio-on-macos)
   - [2.4. Connect Foxglove Studio to Your ROS VM](#24-connect-foxglove-studio-to-your-ros-vm)
   - [2.5. Troubleshooting](#25-troubleshooting)
+- [3. Setting Up Video Stream from Alphabot2 to MacOS, using Foxglove](#3-setting-up-video-stream-from-alphabot2-to-macos-using-foxglove)
+  - [3.1. Install the Foxglove Bridge in Alphabot](#31-install-the-foxglove-bridge-in-alphabot)
+  - [3.2. Start camera (Streaming images example specific)](#32-start-camera-streaming-images-example-specific)
+  - [3.3. Install Foxglove Studio on macOS](#33-install-foxglove-studio-on-macos)
+  - [3.4. Stream images in Foxglove](#34-stream-images-in-foxglove)
 
 ---
 
@@ -100,7 +109,7 @@ You now have a working ROS Noetic environment inside an Ubuntu 20.04 VM on your 
 
 ---
 
-# 2. Setting Up Foxglove Studio with ROS Noetic
+# 2. Setting Up Foxglove Studio with ROS Noetic (VM to MacOS)
 
 Foxglove Studio is a modern visualization tool for ROS data, similar to RViz, but with a web and desktop interface and advanced features.
 
@@ -116,6 +125,8 @@ Start the bridge node so Foxglove Studio can connect:
 `roslaunch --screen foxglove_bridge foxglove_bridge.launch port:=8765`  
 This opens a WebSocket server on port 8765.
 
+Note: The `--screen` option in `roslaunch` is used to display the standard output (stdout) and standard error (stderr) from all nodes directly in the terminal where you run the command, rather than logging this output to files. The `port:=(number)` argument allows you to set the port (the default is 8765).
+
 ## 2.3. Install Foxglove Studio on macOS
 
 - Download and install Foxglove Studio for macOS from https://foxglove.dev/download  
@@ -128,7 +139,7 @@ This opens a WebSocket server on port 8765.
 2. Open Foxglove Studio (desktop or web).  
 3. Click "Open connection" and select "Foxglove WebSocket".  
 4. Enter the WebSocket URL:  
-   `ws://<VM-IP>:8765` (replace `<VM-IP>` with your VM's IP)   
+   `ws://<VM-IP>:8765` (replace `<VM-IP>` with your VM's IP, remember that you can find it by running `multipass list` outside your VM).
 5. Connect and start visualizing your ROS topics.
 
 ## 2.5. Troubleshooting
@@ -140,5 +151,41 @@ This opens a WebSocket server on port 8765.
 
 ---
 
-You now have Foxglove Studio set up and connected to your ROS Noetic environment running in a Multipass VM on macOS!
+# 3. Setting Up Video Stream from Alphabot2 to MacOS, using Foxglove
 
+## 3.1. Install the Foxglove Bridge in Alphabot
+
+Access the Alphabot using ssh:
+`ssh alphabot2@192.168.28.54`
+
+If you haven't previously, install Foxglove bridge using:
+`sudo apt install ros-noetic-foxglove-bridge`
+
+Then, launch the foxglove_bridge using:
+`roslaunch foxglove_bridge foxglove_bridge.launch`
+
+The robot is now streaming the topics running inside it (usually in port 8765).
+
+## 3.2. Start camera (Streaming images example specific)
+
+The robot is streaming the topics but the camera hasn't been started yet so let's do it using commands:
+
+`source ~/catkin_ws/devel/setup.bash`
+`roslaunch raspicam_node camerav2_1280x960.launch`
+
+Now, the robot is streaming the images and we only need to collect them on the MacOS side
+
+## 3.3. Install Foxglove Studio on macOS
+
+- Download and install Foxglove Studio for macOS from https://foxglove.dev/download  
+- Or use the web version at https://studio.foxglove.dev
+
+## 3.4. Stream images in Foxglove
+
+Open Foxglove studio and click on `Open connection...`. Then, input `ws://192.168.28.54:8765` into the WebSocket URL box and click `Open`.
+
+You should now be able to see the images being streamed on the up-right corner.
+
+---
+
+You can now, stream images to MacOS from the Alphabot using Foxglove. You can follow the same process to access any topic you launched on Alphabot in MacOS.
