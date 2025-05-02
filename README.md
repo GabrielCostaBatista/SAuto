@@ -1,21 +1,31 @@
-# Table of Contents
+# ROS Noetic on macOS with Multipass & Foxglove Setup Guide
+
+This guide covers setting up ROS Noetic on macOS using Multipass virtualization and configuring Foxglove.
+
+## Table of Contents
 
 - [1. Installing Multipass and ROS Noetic on macOS](#1-installing-multipass-and-ros-noetic-on-macos)
-- [2. Setting Up Foxglove Studio with ROS Noetic](#2-setting-up-foxglove-studio-with-ros-noetic)
+  - [1.1. Install Multipass on macOS](#11-install-multipass-on-macos)
+  - [1.2. Install ROS Noetic inside the Ubuntu 20.04 VM](#12-install-ros-noetic-inside-the-ubuntu-2004-vm)
+  - [1.3. Optional: Mount a Shared Folder Between macOS and the VM](#13-optional-mount-a-shared-folder-between-macos-and-the-vm)
+  - [1.4. Additional Tips](#14-additional-tips)
+- [2. Setting Up Foxglove Studio with ROS Noetic (VM to MacOS)](#2-setting-up-foxglove-studio-with-ros-noetic-vm-to-macos)
   - [2.1. Install the Foxglove Bridge in ROS VM](#21-install-the-foxglove-bridge-in-ros-vm)
   - [2.2. Launch the Foxglove Bridge](#22-launch-the-foxglove-bridge)
   - [2.3. Install Foxglove Studio on macOS](#23-install-foxglove-studio-on-macos)
   - [2.4. Connect Foxglove Studio to Your ROS VM](#24-connect-foxglove-studio-to-your-ros-vm)
   - [2.5. Troubleshooting](#25-troubleshooting)
+- [3. Setting Up Video Stream from Alphabot2 to MacOS, using Foxglove](#3-setting-up-video-stream-from-alphabot2-to-macos-using-foxglove)
+  - [3.1. Install the Foxglove Bridge in Alphabot](#31-install-the-foxglove-bridge-in-alphabot)
+  - [3.2. Start camera (Streaming images example specific)](#32-start-camera-streaming-images-example-specific)
+  - [3.3. Install Foxglove Studio on macOS](#33-install-foxglove-studio-on-macos)
+  - [3.4. Stream images in Foxglove](#34-stream-images-in-foxglove)
 
 ---
-
 
 # 1. Installing Multipass and ROS Noetic on macOS
 
 This guide explains how to install Multipass on macOS and set up ROS Noetic inside an Ubuntu 20.04 Multipass VM, following the ROS installation tutorial for Ubuntu 20.04 from https://varhowto.com/install-ros-noetic-ubuntu-20-04.
-
----
 
 ## 1.1. Install Multipass on macOS
 
@@ -26,95 +36,122 @@ Multipass allows you to run Ubuntu VMs easily on macOS.
 1. Download and install Multipass from the official site: https://multipass.run/
 
 2. Verify installation by opening Terminal and running:  
-   `multipass version`
+   ```bash
+   multipass version
+   ```
 
-3. Launch an Ubuntu 20.04 VM (name it `ros1-vm`):  
-   `multipass launch 20.04 --name ros1-vm --memory 4G --disk 40G`
+3. Launch an Ubuntu 20.04 VM (name it ros1-vm):  
+   ```bash
+   multipass launch 20.04 --name ros1-vm --memory 4G --disk 40G
+   ```
 
 4. Access the VM shell:  
-   `multipass shell ros1-vm`
-
----
+   ```bash
+   multipass shell ros1-vm
+   ```
 
 ## 1.2. Install ROS Noetic inside the Ubuntu 20.04 VM
 
-Follow the steps below inside the VM shell (`ros1-vm`):
+Follow the steps below inside the VM shell (ros1-vm):
 
 ### Step 1:  Set up ROS Noetic repo for Ubuntu 20.04 
-`echo "deb http://packages.ros.org/ros/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/ros-focal.list`
+```bash
+echo "deb http://packages.ros.org/ros/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/ros-focal.list
+```
 
 ### Step 2: Set up your keys  
-`sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654`
+```bash
+sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+```
 
 ### Step 3: Update package index  
-`sudo apt update`
+```bash
+sudo apt update
+```
 
 ### Step 4: Install ROS Noetic Desktop Full  
-`sudo apt install ros-noetic-desktop-full -y`
+```bash
+sudo apt install ros-noetic-desktop-full -y
+```
 
 ### Step 5: Environment setup  
 Add the ROS environment variables to your bash session:  
-`source /opt/ros/noetic/setup.bash`  
-`echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc`
-`source ~/.bashrc`
+```bash
+source /opt/ros/noetic/setup.bash  
+echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
 
 ### Step 6: Verify Noetic installation
-`roscd`
+```bash
+roscd
+```
 This should take you to `/opt/ros/noetic`.
-`roscore`
+```bash
+roscore
+```
 If no errors appear everything should be ok.
-
-
----
 
 ## 1.3. Optional: Mount a Shared Folder Between macOS and the VM
 
 You might want to edit code directly in your PC instead of working inside the VM (to use your usual code editor for example). To share files between your macOS host and the Ubuntu VM:
 
 1. Create a folder, e.g., `~/ros_shared`, or clone this repository on macOS (we will assume that you cloned the repository) (remember that the repository folder will appear inside the folder where you are when cloning it):  
-   `mkdir -p ~/ros_shared` or `git clone https://github.com/GabrielCostaBatista/SAuto.git`
+   ```bash
+   mkdir -p ~/ros_shared
+   ```
+   or 
+   ```bash
+   git clone https://github.com/GabrielCostaBatista/SAuto.git
+   ```
 
 2. Mount it into the VM:  
-   `multipass mount SAuto ros1-vm:/home/ubuntu/SAuto`
+   ```bash
+   multipass mount SAuto ros1-vm:/home/ubuntu/SAuto
+   ```
 
 3. Check if the shared folder is inside the VM:
-   `multipass shell ros1-vm` 
-   `ls`
-
-
----
+   ```bash
+   multipass shell ros1-vm 
+   ls
+   ```
 
 ## 1.4. Additional Tips
 
 - Use `multipass list` to check running instances and their IP addresses.  
 - Use `multipass exec ros1-vm -- <command>` to run commands inside the VM without opening a shell.  
 - To stop and delete the VM:  
-  `multipass stop ros1-vm`  
-  `multipass delete ros1-vm`  
-  `multipass purge`
+  ```bash
+  multipass stop ros1-vm  
+  multipass delete ros1-vm  
+  multipass purge
+  ```
+
+> 🎉 You now have a working ROS Noetic environment inside an Ubuntu 20.04 VM on your macOS machine using Multipass!
 
 ---
 
-You now have a working ROS Noetic environment inside an Ubuntu 20.04 VM on your macOS machine using Multipass!
-
-
----
-
-# 2. Setting Up Foxglove Studio with ROS Noetic
+# 2. Setting Up Foxglove Studio with ROS Noetic (VM to MacOS)
 
 Foxglove Studio is a modern visualization tool for ROS data, similar to RViz, but with a web and desktop interface and advanced features.
 
 ## 2.1. Install the Foxglove Bridge in ROS VM
 
 Inside your Multipass Ubuntu VM, run:  
-`sudo apt update`  
-`sudo apt install ros-noetic-foxglove-bridge`
+```bash
+sudo apt update  
+sudo apt install ros-noetic-foxglove-bridge
+```
 
 ## 2.2. Launch the Foxglove Bridge
 
 Start the bridge node so Foxglove Studio can connect:  
-`roslaunch --screen foxglove_bridge foxglove_bridge.launch port:=8765`  
+```bash
+roslaunch --screen foxglove_bridge foxglove_bridge.launch port:=8765
+```
 This opens a WebSocket server on port 8765.
+
+> **Note**: The `--screen` option in roslaunch is used to display the standard output (stdout) and standard error (stderr) from all nodes directly in the terminal where you run the command, rather than logging this output to files. The `port:=(number)` argument allows you to set the port (the default is 8765).
 
 ## 2.3. Install Foxglove Studio on macOS
 
@@ -124,11 +161,13 @@ This opens a WebSocket server on port 8765.
 ## 2.4. Connect Foxglove Studio to Your ROS VM
 
 1. Find your VM's IP address by running on your host:  
-   `multipass list`  
+   ```bash
+   multipass list
+   ```
 2. Open Foxglove Studio (desktop or web).  
 3. Click "Open connection" and select "Foxglove WebSocket".  
 4. Enter the WebSocket URL:  
-   `ws://<VM-IP>:8765` (replace `<VM-IP>` with your VM's IP)   
+   `ws://<VM-IP>:8765` (replace `<VM-IP>` with your VM's IP, remember that you can find it by running `multipass list` outside your VM).
 5. Connect and start visualizing your ROS topics.
 
 ## 2.5. Troubleshooting
@@ -140,5 +179,49 @@ This opens a WebSocket server on port 8765.
 
 ---
 
-You now have Foxglove Studio set up and connected to your ROS Noetic environment running in a Multipass VM on macOS!
+# 3. Setting Up Video Stream from Alphabot2 to MacOS, using Foxglove
 
+## 3.1. Install the Foxglove Bridge in Alphabot
+
+Access the Alphabot using ssh:
+```bash
+ssh alphabot2@192.168.28.54
+```
+
+If you haven't previously, install Foxglove bridge using:
+```bash
+sudo apt install ros-noetic-foxglove-bridge
+```
+
+Then, launch the foxglove_bridge using:
+```bash
+roslaunch foxglove_bridge foxglove_bridge.launch
+```
+
+The robot is now streaming the topics running inside it (usually in port 8765).
+
+## 3.2. Start camera (Streaming images example specific)
+
+The robot is streaming the topics but the camera hasn't been started yet so let's do it using commands:
+
+```bash
+source ~/catkin_ws/devel/setup.bash
+roslaunch raspicam_node camerav2_1280x960.launch
+```
+
+Now, the robot is streaming the images and we only need to collect them on the MacOS side
+
+## 3.3. Install Foxglove Studio on macOS
+
+- Download and install Foxglove Studio for macOS from https://foxglove.dev/download  
+- Or use the web version at https://studio.foxglove.dev
+
+## 3.4. Stream images in Foxglove
+
+Open Foxglove studio and click on `Open connection...`. Then, input `ws://192.168.28.54:8765` into the WebSocket URL box and click `Open`.
+
+You should now be able to see the images being streamed on the up-right corner.
+
+---
+
+> 📷 You can now stream images to MacOS from the Alphabot using Foxglove. You can follow the same process to access any topic you launched on Alphabot in MacOS.
