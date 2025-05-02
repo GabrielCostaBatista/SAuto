@@ -1,8 +1,6 @@
 # ROS Noetic on macOS with Multipass & Foxglove Setup Guide
 
-<img src="https://raw.githubusercontent.com/ros/ros_org_website/master/img/ros_logo.png" width="200" align="right" alt="ROS Logo">
-
-This guide covers setting up ROS Noetic on macOS using Multipass virtualization and configuring Foxglove Studio for visualization.
+This guide covers setting up ROS Noetic on macOS using Multipass virtualization and configuring Foxglove.
 
 ## Table of Contents
 
