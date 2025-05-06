@@ -92,7 +92,7 @@ roscore
 ```
 If no errors appear everything should be ok.
 
-## 1.3. Optional: Mount a Shared Folder Between macOS and the VM
+## 1.3. Optional (Deprecated): Mount a Shared Folder Between macOS and the VM
 
 You might want to edit code directly in your PC instead of working inside the VM (to use your usual code editor for example). To share files between your macOS host and the Ubuntu VM:
 
@@ -116,7 +116,70 @@ You might want to edit code directly in your PC instead of working inside the VM
    ls
    ```
 
-## 1.4. Additional Tips
+## 1.4. Fixing catkin_make errors by using VSCode ssh instead of shared folder
+
+### 1. Unmount the Shared Folder `/home/ubuntu/SAuto`
+1. If you previously mounted a shared folder at `/home/ubuntu/SAuto`, unmount it from your macOS terminal (not inside the VM) with:
+
+```multipass umount ros1-vm:/home/ubuntu/SAuto
+```
+
+Replace `ros1-vm` with your VM's name if it's different.
+
+---
+
+### 2. Set Up GitHub SSH Access Inside the VM
+
+**a. Generate a new SSH key pair (inside the VM):**
+
+```ssh-keygen -t ed25519 -C “your_email@example.com”```
+
+- When prompted for a file location, press Enter to accept the default.
+- Optionally set a passphrase, or press Enter to leave it empty.
+
+**b. Add your SSH key to the SSH agent:**
+
+```
+eval “$(ssh-agent -s)”
+ssh-add ~/.ssh/id_ed25519
+```
+
+**c. Copy your public key to your clipboard:**
+
+```cat ~/.ssh/id_ed25519.pub```
+
+- Copy the entire output.
+
+**d. Add the public key to your GitHub account:**
+- Go to GitHub → Settings → SSH and GPG keys → New SSH key.
+- Paste your copied key and give it a descriptive title (e.g., "Multipass VM").
+- Save the key.
+
+**e. Test the SSH connection to GitHub:**
+
+```ssh -T git@github.com```
+
+- On first connection, type `yes` to confirm.  
+- You should see a welcome message if successful.
+
+---
+
+### 3. Clone the Repository Using SSH
+
+Now you can clone the repository securely without username/password prompts:
+
+```git clone git@github.com:GabrielCostaBatista/SAuto.git```
+
+
+---
+
+**Summary:**  
+- Unmount the shared folder to avoid permission issues.
+- Set up SSH keys inside your VM and add the public key to GitHub.
+- Use the SSH URL to clone the repository for a smoother development experience.
+
+
+## 1.5. Additional Tips
 
 - Use `multipass list` to check running instances and their IP addresses.  
 - Use `multipass exec ros1-vm -- <command>` to run commands inside the VM without opening a shell.  
