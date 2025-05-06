@@ -116,13 +116,12 @@ You might want to edit code directly in your PC instead of working inside the VM
    ls
    ```
 
-## 1.4. Fixing catkin_make errors by using VSCode ssh instead of shared folder
+## 1.4. Fixing catkin_make errors by using VSCode remote instead of shared folder
 
 ### 1. Unmount the Shared Folder `/home/ubuntu/SAuto`
 1. If you previously mounted a shared folder at `/home/ubuntu/SAuto`, unmount it from your macOS terminal (not inside the VM) with:
 
-```multipass umount ros1-vm:/home/ubuntu/SAuto
-```
+```multipass umount ros1-vm:/home/ubuntu/SAuto```
 
 Replace `ros1-vm` with your VM's name if it's different.
 
