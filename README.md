@@ -122,7 +122,9 @@ You might want to edit code directly in your PC instead of working inside the VM
 ### 1. Unmount the Shared Folder `/home/ubuntu/SAuto`
 1. If you previously mounted a shared folder at `/home/ubuntu/SAuto`, unmount it from your macOS terminal (not inside the VM) with:
 
-```multipass umount ros1-vm:/home/ubuntu/SAuto```
+```bash
+multipass umount ros1-vm:/home/ubuntu/SAuto
+```
 
 Replace `ros1-vm` with your VM's name if it's different.
 
@@ -132,21 +134,25 @@ Replace `ros1-vm` with your VM's name if it's different.
 
 **a. Generate a new SSH key pair (inside the VM):**
 
-```ssh-keygen -t ed25519 -C “your_email@example.com”```
+```bash
+ssh-keygen -t ed25519 -C “your_email@example.com”
+```
 
 - When prompted for a file location, press Enter to accept the default.
 - Optionally set a passphrase, or press Enter to leave it empty.
 
 **b. Add your SSH key to the SSH agent:**
 
-```
+```bash
 eval “$(ssh-agent -s)”
 ssh-add ~/.ssh/id_ed25519
 ```
 
 **c. Copy your public key to your clipboard:**
 
-```cat ~/.ssh/id_ed25519.pub```
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
 
 - Copy the entire output.
 
@@ -157,7 +163,9 @@ ssh-add ~/.ssh/id_ed25519
 
 **e. Test the SSH connection to GitHub:**
 
-```ssh -T git@github.com```
+```bash
+ssh -T git@github.com
+```
 
 - On first connection, type `yes` to confirm.  
 - You should see a welcome message if successful.
@@ -168,15 +176,9 @@ ssh-add ~/.ssh/id_ed25519
 
 Now you can clone the repository securely without username/password prompts:
 
-```git clone git@github.com:GabrielCostaBatista/SAuto.git```
-
-
----
-
-**Summary:**  
-- Unmount the shared folder to avoid permission issues.
-- Set up SSH keys inside your VM and add the public key to GitHub.
-- Use the SSH URL to clone the repository for a smoother development experience.
+```bash
+git clone git@github.com:GabrielCostaBatista/SAuto.git
+```
 
 
 ## 1.5. Additional Tips
