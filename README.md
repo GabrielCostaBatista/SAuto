@@ -204,11 +204,7 @@ VSCode Remote-SSH allows you to use your macOS VSCode to edit files directly on 
   
 - For Multipass VMs, use this special method to add your SSH key:
   ```bash
-  # Ensure your public key is properly formatted for multipass
-  PUBLIC_KEY=$(cat ~/.ssh/id_ed25519.pub)
-  
-  # Add the key to the VM's authorized_keys file
-  multipass exec ros1-vm -- bash -c "mkdir -p ~/.ssh && echo '$PUBLIC_KEY' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && chmod 700 ~/.ssh"
+  cat ~/.ssh/id_ed25519.pub | multipass exec ros1-vm -- bash -c "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
   ```
   If you're using RSA keys instead of ED25519, use `~/.ssh/id_rsa.pub` in the command above.
 
