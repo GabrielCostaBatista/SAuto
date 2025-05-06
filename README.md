@@ -128,7 +128,6 @@ multipass umount ros1-vm:/home/ubuntu/SAuto
 
 Replace `ros1-vm` with your VM's name if it's different.
 
----
 
 ### 2. Set Up GitHub SSH Access Inside the VM
 
@@ -170,7 +169,6 @@ ssh -T git@github.com
 - On first connection, type `yes` to confirm.  
 - You should see a welcome message if successful.
 
----
 
 ### 3. Clone the Repository Using SSH
 
