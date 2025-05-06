@@ -243,18 +243,7 @@ VSCode Remote-SSH allows you to use your macOS VSCode to edit files directly on 
 
 **f. Create a persistent bookmark:**
 - After successfully connecting once, your VM will appear in the Remote Explorer sidebar
-- You can right-click it and select "Add Label" to give it a friendly name
-
-**g. Troubleshooting SSH Connection:**
-- If you encounter "Permission denied (publickey)" errors:
-  - Ensure your SSH key is properly added to the VM
-  - Check that permissions are correct:
-    ```bash
-    chmod 700 ~/.ssh
-    chmod 600 ~/.ssh/id_ed25519
-    chmod 600 ~/.ssh/id_ed25519.pub
-    ```
-  - Try using password authentication first by adding `-o PreferredAuthentications=password` to your SSH command
+- You can change the name that appears on the sidebar by altering the name after Host in `~/.ssh/config` file.
 
 Now you can develop ROS applications using your familiar macOS VSCode environment while the code runs natively in the Ubuntu VM, avoiding permission issues with shared folders while getting the full development experience.
 
