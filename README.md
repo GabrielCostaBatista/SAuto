@@ -243,7 +243,7 @@ VSCode Remote-SSH allows you to use your macOS VSCode to edit files directly on 
 
 **f. Create a persistent bookmark:**
 - After successfully connecting once, your VM will appear in the Remote Explorer sidebar
-- You can change the name that appears on the sidebar by altering the name after Host in `~/.ssh/config` file.
+- (Optional) You can change the name that appears on the sidebar by altering the name after Host in `~/.ssh/config` file.
 
 Now you can develop ROS applications using your familiar macOS VSCode environment while the code runs natively in the Ubuntu VM, avoiding permission issues with shared folders while getting the full development experience.
 
