@@ -4,6 +4,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
 
 
 
@@ -11,14 +12,15 @@ import matplotlib.pyplot as plt
 # Maze Definition #
 ###################
 
-maze = np.array([
-    [0,0,0,0,1,0,0,0,0],
-    [1,1,1,0,1,0,1,1,1],
-    [0,0,0,0,1,0,1,0,0],
-    [0,1,0,1,1,0,1,1,0],
-    [0,1,0,0,1,0,0,1,0],
-    [0,0,1,0,0,0,0,0,0],
-], dtype=int)
+def image_to_maze(path, threshold=128):
+    img = Image.open(path).convert('L')
+    arr = np.array(img)
+
+    maze = (arr < threshold).astype(int)
+    return maze
+
+
+maze = image_to_maze('test_maze_2.png')
 
 n_rows, n_cols = maze.shape
 start = (0, 0)                # In this case, the robot starts at the top left corner
@@ -32,8 +34,11 @@ goal  = (0, n_cols-1)         # In this case, the robot starts at the top right 
 
 actions = [(-1,0),(1,0),(0,-1),(0,1)]  # up,down,left,right
 gamma = 0.99
-r_step = -1
-r_goal = 0
+r_step = 1
+
+# r_goal needs to be large enough to ensure that the robot prefers to go to the goal
+# instead of going to the walls. In this case, it is set to 1000.
+r_goal = 1000
 
 def in_bounds(row,col): # Function to make sure that the robot does not leave the maze
     return 0 <= row < n_rows and 0 <= col < n_cols
@@ -55,6 +60,7 @@ for i in range(1000):
             # End the algorithm
             if (row,col)==goal:
                 V[row,col] = r_goal
+                policy[row,col] = -1
                 continue
 
             best_val = -1e9
@@ -63,6 +69,9 @@ for i in range(1000):
                 nr, nc = row+dr, col+dc
                 if not in_bounds(nr,nc) or maze[nr,nc]==1:
                     val = r_step + gamma * V_prev[row,col]
+
+                elif (nr, nc) == goal:
+                    val = r_goal
 
                 else:
                     val = r_step + gamma * V_prev[nr,nc]
@@ -87,7 +96,7 @@ while cur != goal:
     dr, dc = actions[a]
     nxt = (cur[0]+dr, cur[1]+dc)
     if not in_bounds(*nxt) or maze[nxt]==1:
-        print("Stuck or wall encountered—check your maze definition!")
+        print("Stuck or wall encountered; check your maze definition!")
         break
     
     path.append(nxt)
@@ -122,8 +131,8 @@ fig, ax = plt.subplots(figsize=(9,6))
 # Draw heatmap
 cmap = plt.cm.viridis
 # Mask walls so they appear white
-V_masked = np.ma.masked_where(maze==1, -V)
-heat = ax.imshow(-V_masked, cmap=cmap, interpolation='nearest')
+V_masked = np.ma.masked_where(maze==1, V)
+heat = ax.imshow(V_masked, cmap=cmap, interpolation='nearest')
 
 # Annotate each cell
 for r in range(n_rows):
@@ -136,7 +145,7 @@ for r in range(n_rows):
         elif (r,c) == goal:
             text = "G"
         else:
-            text = f"{-V[r,c]:.0f}"
+            text = f"{V[r,c]:.0f}"
         ax.text(c, r, text, ha='center', va='center', color='white', fontsize=12)
 
 
