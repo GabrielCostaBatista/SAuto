@@ -184,7 +184,7 @@ git clone git@github.com:GabrielCostaBatista/SAuto.git
 VSCode Remote-SSH allows you to use your macOS VSCode to edit files directly on the Multipass VM, providing a seamless development experience without the permission issues of shared folders.
 
 **a. Set up SSH keys for Multipass VM access:**
-- Check if you already have an SSH key:
+- In MacOS, check if you already have an SSH key:
   ```bash
   ls -la ~/.ssh
   ```
