@@ -41,18 +41,18 @@ path = mdp.get_optimal_path()
 
 
 def move_robot_to_position(pub, x, y, theta):
-    pose = PoseStamped()
-    pose.header.frame_id = "map"
-    pose.header.stamp = rospy.Time.now()
-    pose.pose.position.x = x
-    pose.pose.position.y = y
+    pose = MoveBaseGoal()
+    pose.target_pose.header.frame_id = "map"
+    pose.target_pose.header.stamp = rospy.Time.now()
+    pose.target_pose.pose.position.x = x
+    pose.target_pose.pose.position.y = y
 
     # Convert yaw → quaternion
     q = quaternion_from_euler(0.0, 0.0, theta)
-    pose.pose.orientation.x = q[0]
-    pose.pose.orientation.y = q[1]
-    pose.pose.orientation.z = q[2]
-    pose.pose.orientation.w = q[3]
+    pose.target_pose.pose.orientation.x = q[0]
+    pose.target_pose.pose.orientation.y = q[1]
+    pose.target_pose.pose.orientation.z = q[2]
+    pose.target_pose.pose.orientation.w = q[3]
 
     pub.publish(pose)
     rospy.loginfo(f"Sent goal: x={x:.2f}, y={y:.2f}, θ={theta:.2f} rad")
@@ -60,7 +60,7 @@ def move_robot_to_position(pub, x, y, theta):
 
 # if __name__ == '__main__':
 rospy.init_node('move_robot')
-pub = rospy.Publisher('move_base_simple/goal', PoseStamped, queue_size=1)
+pub = rospy.Publisher('move_base_simple/goal', MoveBaseGoal, queue_size=1)
 rospy.sleep(1.0)
 
 for i in range(len(path)):
