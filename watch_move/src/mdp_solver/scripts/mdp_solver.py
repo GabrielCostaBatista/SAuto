@@ -38,15 +38,14 @@ path = mdp.get_optimal_path()
 # Robot Movement  #
 ###################
 
-RESOLUTION = 0.05   # metres per cell
-ORIGIN_X, ORIGIN_Y = -5.0, -5.0
+RESOLUTION = 0.10   # metres per cell
 
 def move_robot_to_position(client, x, y, theta):
     pose = MoveBaseGoal()
     pose.target_pose.header.frame_id = "map"
     pose.target_pose.header.stamp = rospy.Time.now()
-    pose.target_pose.pose.position.x = x * RESOLUTION + ORIGIN_X
-    pose.target_pose.pose.position.y = y  * RESOLUTION + ORIGIN_Y
+    pose.target_pose.pose.position.x = x * RESOLUTION
+    pose.target_pose.pose.position.y = y  * RESOLUTION
 
     # Convert yaw → quaternion
     q = quaternion_from_euler(0.0, 0.0, theta)
