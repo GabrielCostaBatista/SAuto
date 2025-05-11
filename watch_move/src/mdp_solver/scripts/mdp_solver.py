@@ -55,18 +55,18 @@ def move_robot_to_position(client, x, y, theta):
     pose.target_pose.pose.orientation.w = q[3]
 
     client.send_goal(pose)
-    client.wait_for_result()
+    # client.wait_for_result()
     rospy.loginfo(f"Sent goal: x={x:.2f}, y={y:.2f}, θ={theta:.2f} rad")
-    return client.get_statet()
+    return client.get_state()
 
 # if __name__ == '__main__':
 rospy.init_node('move_robot')
 client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-client.wait_for_server()
+# client.wait_for_server()
 
 for i in range(len(path)):
     x, y = path[i]
-
+    rospy.loginfo(f"Teste {i}: x={x}, y={y}")
     # compute heading toward next waypoint (or zero at the end)
     if i < len(path) - 1:
         dx, dy = path[i+1]
@@ -77,7 +77,7 @@ for i in range(len(path)):
     move_robot_to_position(client, x, y, theta)
 
     # wait for the robot to reach (tune this duration as needed)
-    rospy.sleep(2.0)
+    rospy.sleep(5.0)
 
     rospy.loginfo("Waiting...")
 
