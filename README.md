@@ -7,8 +7,9 @@ This guide covers setting up ROS Noetic on macOS using Multipass virtualization 
 - [1. Installing Multipass and ROS Noetic on macOS](#1-installing-multipass-and-ros-noetic-on-macos)
   - [1.1. Install Multipass on macOS](#11-install-multipass-on-macos)
   - [1.2. Install ROS Noetic inside the Ubuntu 20.04 VM](#12-install-ros-noetic-inside-the-ubuntu-2004-vm)
-  - [1.3. Optional: Mount a Shared Folder Between macOS and the VM](#13-optional-mount-a-shared-folder-between-macos-and-the-vm)
-  - [1.4. Additional Tips](#14-additional-tips)
+  - [1.3. Optional (Deprecated): Mount a Shared Folder Between macOS and the VM](#13-optional-deprecated-mount-a-shared-folder-between-macos-and-the-vm)
+  - [1.4. Fixing catkin_make errors by using VSCode remote instead of shared folder](#14-fixing-catkin_make-errors-by-using-vscode-remote-instead-of-shared-folder)
+  - [1.5. Additional Tips](#15-additional-tips)
 - [2. Setting Up Foxglove Studio with ROS Noetic (VM to MacOS)](#2-setting-up-foxglove-studio-with-ros-noetic-vm-to-macos)
   - [2.1. Install the Foxglove Bridge in ROS VM](#21-install-the-foxglove-bridge-in-ros-vm)
   - [2.2. Launch the Foxglove Bridge](#22-launch-the-foxglove-bridge)
@@ -121,31 +122,36 @@ You might want to edit code directly in your PC instead of working inside the VM
 ### 1. Unmount the Shared Folder `/home/ubuntu/SAuto`
 1. If you previously mounted a shared folder at `/home/ubuntu/SAuto`, unmount it from your macOS terminal (not inside the VM) with:
 
-```multipass umount ros1-vm:/home/ubuntu/SAuto```
+```bash
+multipass umount ros1-vm:/home/ubuntu/SAuto
+```
 
 Replace `ros1-vm` with your VM's name if it's different.
 
----
 
 ### 2. Set Up GitHub SSH Access Inside the VM
 
 **a. Generate a new SSH key pair (inside the VM):**
 
-```ssh-keygen -t ed25519 -C “your_email@example.com”```
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+```
 
 - When prompted for a file location, press Enter to accept the default.
 - Optionally set a passphrase, or press Enter to leave it empty.
 
 **b. Add your SSH key to the SSH agent:**
 
-```
-eval “$(ssh-agent -s)”
+```bash
+eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/id_ed25519
 ```
 
 **c. Copy your public key to your clipboard:**
 
-```cat ~/.ssh/id_ed25519.pub```
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
 
 - Copy the entire output.
 
@@ -156,27 +162,90 @@ ssh-add ~/.ssh/id_ed25519
 
 **e. Test the SSH connection to GitHub:**
 
-```ssh -T git@github.com```
+```bash
+ssh -T git@github.com
+```
 
 - On first connection, type `yes` to confirm.  
 - You should see a welcome message if successful.
 
----
 
 ### 3. Clone the Repository Using SSH
 
 Now you can clone the repository securely without username/password prompts:
 
-```git clone git@github.com:GabrielCostaBatista/SAuto.git```
+```bash
+git clone git@github.com:GabrielCostaBatista/SAuto.git
+```
 
 
----
+### 4. Setup VSCode Remote-SSH
 
-**Summary:**  
-- Unmount the shared folder to avoid permission issues.
-- Set up SSH keys inside your VM and add the public key to GitHub.
-- Use the SSH URL to clone the repository for a smoother development experience.
+VSCode Remote-SSH allows you to use your macOS VSCode to edit files directly on the Multipass VM, providing a seamless development experience without the permission issues of shared folders.
 
+**a. Set up SSH keys for Multipass VM access:**
+- In MacOS, check if you already have an SSH key:
+  ```bash
+  ls -la ~/.ssh
+  ```
+  Look for files named `id_ed25519` and `id_ed25519.pub` (or `id_rsa` and `id_rsa.pub`). If these exist, you can skip the key generation step.
+
+- If you don't have an SSH key, generate one:
+  ```bash
+  ssh-keygen -t ed25519
+  ```
+  Press Enter to accept the default location.
+  
+- Get your VM's IP address:
+  ```bash
+  multipass list
+  ```
+  Note the IP address of your `ros1-vm` VM (we'll refer to it as `<VM-IP>`)
+  
+- For Multipass VMs, use this special method to add your SSH key:
+  ```bash
+  cat ~/.ssh/id_ed25519.pub | multipass exec ros1-vm -- bash -c "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+  ```
+  If you're using RSA keys instead of ED25519, use `~/.ssh/id_rsa.pub` in the command above.
+
+- Test the connection:
+  ```bash
+  ssh ubuntu@<VM-IP>
+  ```
+  You should now be able to connect without a password prompt.
+
+**b. Install the Remote-SSH extension in VSCode:**
+- Open VSCode on your macOS
+- Go to Extensions (or press `Cmd+Shift+X`)
+- Search for "Remote - SSH" by Microsoft
+- Click Install
+
+**c. Configure SSH connection in VSCode:**
+- In VSCode, press `F1` or `Cmd+Shift+P` to open the command palette
+- Type "Remote-SSH: Add New SSH Host" and select it
+- Enter the SSH connection command:
+  ```
+  ssh ubuntu@<VM-IP>
+  ```
+  (Replace `<VM-IP>` with your VM's actual IP address)
+- Choose a config file to update (usually the first option is fine)
+
+**d. Connect to your VM:**
+- In VSCode, click on the green button in the bottom-left corner
+- Select "Connect to Host..." from the menu
+- Choose your VM from the list
+- VSCode will connect using your SSH key
+
+**e. When connected:**
+- VSCode will open a new window connected to your VM
+- Go to "File > Open Folder" to navigate to your project folder (e.g., `/home/ubuntu/SAuto`)
+- You now have full access to your ROS project with all VSCode features
+
+**f. Create a persistent bookmark:**
+- After successfully connecting once, your VM will appear in the Remote Explorer sidebar
+- (Optional) You can change the name that appears on the sidebar by altering the name after Host in `~/.ssh/config` file.
+
+Now you can develop ROS applications using your familiar macOS VSCode environment while the code runs natively in the Ubuntu VM, avoiding permission issues with shared folders while getting the full development experience.
 
 ## 1.5. Additional Tips
 
