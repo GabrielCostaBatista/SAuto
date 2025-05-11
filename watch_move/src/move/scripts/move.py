@@ -7,12 +7,16 @@ import termios
 import tty
 import os
 import signal
+import threading
+import math
 
 # Import the AlphaBot driver
 try:
     from alphabot_driver.AlphaBot import AlphaBot
+    from alphabot_driver.PCA9685 import PCA9685
 except ImportError:
     from AlphaBot import AlphaBot
+    from PCA9685 import PCA9685
 
 # Define key mappings
 key_mapping = {
@@ -20,7 +24,11 @@ key_mapping = {
     's': 'backward',
     'a': 'turnleft',
     'd': 'turnright',
-    'x': 'stop'
+    'x': 'stop',
+    '\x1b[A': 'camera_up',     # Up arrow - Camera tilt up
+    '\x1b[B': 'camera_down',   # Down arrow - Camera tilt down
+    '\x1b[D': 'camera_left',   # Left arrow - Camera pan left
+    '\x1b[C': 'camera_right'   # Right arrow - Camera pan right
 }
 
 # Speed settings
@@ -28,9 +36,21 @@ SPEED_INCREMENT = 0.2
 MAX_SPEED = 1.0
 MAX_PWM = 100.0  # Maximum PWM value (percentage)
 
+# Camera servo settings
+SERVO_STEP = 5     # Step size for servo movement
+MIN_PULSE = 500    # Minimum servo pulse
+MAX_PULSE = 2500   # Maximum servo pulse
+
 def get_key():
     tty.setraw(sys.stdin.fileno())
     key = sys.stdin.read(1)
+    # Handle arrow keys (escape sequences)
+    if key == '\x1b':
+        # Read the next two characters
+        seq = sys.stdin.read(2)
+        if seq[0] == '[':
+            # Arrow keys are represented as escape sequences: \x1b[A, \x1b[B, \x1b[C, \x1b[D
+            key = key + seq
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
     return key
 
@@ -38,9 +58,37 @@ def clean_shutdown(signum=None, frame=None):
     rospy.loginfo("Shutting down...")
     if 'Ab' in globals():
         Ab.stop()  # Stop the motors
+    if 't' in globals():
+        t.cancel()  # Stop the servo timer thread
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
     rospy.signal_shutdown("User requested shutdown")
     sys.exit(0)
+
+def servo_timer_func():
+    global HPulse, VPulse, HStep, VStep, pwm
+    
+    if(HStep != 0):
+        HPulse += HStep
+        if(HPulse >= MAX_PULSE): 
+            HPulse = MAX_PULSE
+        if(HPulse <= MIN_PULSE):
+            HPulse = MIN_PULSE
+        #set channel 0, the Horizontal servo (pan)
+        pwm.setServoPulse(0, HPulse)    
+        
+    if(VStep != 0):
+        VPulse += VStep
+        if(VPulse >= MAX_PULSE): 
+            VPulse = MAX_PULSE
+        if(VPulse <= MIN_PULSE):
+            VPulse = MIN_PULSE
+        #set channel 1, the vertical servo (tilt)
+        pwm.setServoPulse(1, VPulse)   
+    
+    global t
+    t = threading.Timer(0.01, servo_timer_func)
+    t.daemon = True
+    t.start()
 
 def main():
     rospy.init_node('keyboard_motor_controller')
@@ -48,8 +96,22 @@ def main():
     rate = rospy.Rate(10)
 
     # Initialize the AlphaBot hardware controller
-    global Ab, settings
+    global Ab, settings, pwm, HPulse, VPulse, HStep, VStep, t
     Ab = AlphaBot()
+    
+    # Initialize PWM for servos
+    pwm = PCA9685(0x40)
+    pwm.setPWMFreq(50)
+    
+    # Set servo parameters
+    HPulse = 1500  # Sets the initial Pulse for horizontal (pan)
+    HStep = 0      # Sets the initial step length
+    VPulse = 1500  # Sets the initial Pulse for vertical (tilt)
+    VStep = 0      # Sets the initial step length
+    
+    # Initialize servos
+    pwm.setServoPulse(0, HPulse)  # Pan servo
+    pwm.setServoPulse(1, VPulse)  # Tilt servo
     
     # Set up signal handlers for clean shutdown
     signal.signal(signal.SIGINT, clean_shutdown)
@@ -61,7 +123,13 @@ def main():
     current_linear_velocity = 0.0
     current_angular_velocity = 0.0
     
-    rospy.loginfo("Keyboard motor controller node started. Use WASD to move, X to stop.")
+    # Start servo control thread
+    t = threading.Timer(0.01, servo_timer_func)
+    t.daemon = True
+    t.start()
+    
+    rospy.loginfo("Keyboard motor controller node started.")
+    rospy.loginfo("Controls: WASD to move, X to stop, Arrow keys for camera control.")
 
     try:
         while not rospy.is_shutdown():
@@ -150,6 +218,43 @@ def main():
                     current_linear_velocity = 0.0
                     current_angular_velocity = 0.0
                     Ab.stop()
+                
+                # Camera controls
+                elif command == 'camera_up':
+                    # If moving down, first stop
+                    if VStep > 0:
+                        VStep = 0
+                        rospy.loginfo("Stopping camera tilt before changing direction")
+                    else:
+                        VStep = -SERVO_STEP  # Negative to move up (servo orientation)
+                        rospy.loginfo("Camera tilt up")
+                
+                elif command == 'camera_down':
+                    # If moving up, first stop
+                    if VStep < 0:
+                        VStep = 0
+                        rospy.loginfo("Stopping camera tilt before changing direction")
+                    else:
+                        VStep = SERVO_STEP   # Positive to move down (servo orientation)
+                        rospy.loginfo("Camera tilt down")
+                
+                elif command == 'camera_left':
+                    # If moving right, first stop
+                    if HStep < 0:
+                        HStep = 0
+                        rospy.loginfo("Stopping camera pan before changing direction")
+                    else:
+                        HStep = SERVO_STEP   # Pan left
+                        rospy.loginfo("Camera pan left")
+                
+                elif command == 'camera_right':
+                    # If moving left, first stop
+                    if HStep > 0:
+                        HStep = 0
+                        rospy.loginfo("Stopping camera pan before changing direction")
+                    else:
+                        HStep = -SERVO_STEP  # Pan right
+                        rospy.loginfo("Camera pan right")
                 
                 # Create and publish Twist message
                 twist = Twist()
