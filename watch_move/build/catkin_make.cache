@@ -1,0 +1,2 @@
+move
+-DCATKIN_DEVEL_PREFIX=/home/ubuntu/SAuto/watch_move/devel -DCMAKE_INSTALL_PREFIX=/home/ubuntu/SAuto/watch_move/install -G Unix Makefiles

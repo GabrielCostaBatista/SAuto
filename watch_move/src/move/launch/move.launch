@@ -1,0 +1,10 @@
+<launch>
+    <!-- Motor Controller -->
+    <node pkg="move" type="move.py" name="motor_controller" output="screen"/>
+    
+    <!-- Keyboard Teleop -->
+    <!--<node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop">
+        <param name="speed" value="0.2"/>
+        <param name="turn" value="1.0"/>
+    </node>-->
+</launch>
