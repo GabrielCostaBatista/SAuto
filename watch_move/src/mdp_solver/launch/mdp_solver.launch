@@ -1,0 +1,4 @@
+<launch>
+    <!-- MDP Solver -->
+    <node pkg="mdp_solver" type="mdp_solver.py" name="mdp_solver" output="screen"/>
+</launch>
