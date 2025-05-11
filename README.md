@@ -134,7 +134,7 @@ Replace `ros1-vm` with your VM's name if it's different.
 **a. Generate a new SSH key pair (inside the VM):**
 
 ```bash
-ssh-keygen -t ed25519 -C “your_email@example.com”
+ssh-keygen -t ed25519 -C "your_email@example.com"
 ```
 
 - When prompted for a file location, press Enter to accept the default.
@@ -143,7 +143,7 @@ ssh-keygen -t ed25519 -C “your_email@example.com”
 **b. Add your SSH key to the SSH agent:**
 
 ```bash
-eval “$(ssh-agent -s)”
+eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/id_ed25519
 ```
 
@@ -184,7 +184,7 @@ git clone git@github.com:GabrielCostaBatista/SAuto.git
 VSCode Remote-SSH allows you to use your macOS VSCode to edit files directly on the Multipass VM, providing a seamless development experience without the permission issues of shared folders.
 
 **a. Set up SSH keys for Multipass VM access:**
-- Check if you already have an SSH key:
+- In MacOS, check if you already have an SSH key:
   ```bash
   ls -la ~/.ssh
   ```
