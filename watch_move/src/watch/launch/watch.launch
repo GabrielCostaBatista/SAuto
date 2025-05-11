@@ -1,0 +1,7 @@
+<launch>
+    <!-- Include the ArUco marker detection launch file -->
+    <include file="$(find aruco_detect)/launch/aruco_detect.launch" />
+
+    <!-- Launch the ArUco marker detection node -->
+    <node pkg="watch" type="detect_arruco.py" name="aruco_listener" output="screen"/>
+</launch>
