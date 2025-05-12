@@ -8,7 +8,9 @@ project(watch)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  fiducial_msgs
+  aruco_ros
+  aruco_msgs
+  geometry_msgs
   rospy
 )
 

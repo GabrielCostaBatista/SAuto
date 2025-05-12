@@ -1,6 +1,11 @@
 <launch>
     <!-- Include the ArUco marker detection launch file -->
-    <include file="$(find aruco_detect)/launch/aruco_detect.launch" />
+    <include file="$(find aruco_ros)/launch/marker_publisher.launch">
+        <!-- You can customize these parameters based on your setup -->
+        <!-- marker_publisher can detect multiple markers simultaneously -->
+        <arg name="markerSize" value="0.08"/> 
+        <!-- Add other args as needed, like camera_info, etc. -->
+    </include>
 
     <!-- Launch the ArUco marker detection node -->
     <node pkg="watch" type="detect_arruco.py" name="aruco_listener" output="screen"/>
