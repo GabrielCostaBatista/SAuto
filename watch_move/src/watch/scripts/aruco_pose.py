@@ -30,7 +30,7 @@ class ArucoCompressedDetector:
 
         rospy.init_node('aruco_compressed_detector', anonymous=True)
         rospy.Subscriber("/raspicam_node/image/compressed", CompressedImage, self.image_callback)
-        rospy.loginfo("✅ ArUco detector node started. Waiting for images...")
+        rospy.loginfo("ArUco detector node started. Waiting for images...")
         rospy.spin()
 
     def image_callback(self, msg):
