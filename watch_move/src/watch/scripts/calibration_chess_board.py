@@ -8,7 +8,7 @@ import os
 chessboard_size = (8, 6)  # Number of inner corners (columns, rows)
 square_size = 0.022         # Real-world square size (can be 1.0 if units don’t matter)
 image_folder = "calibration_images"  # Folder containing calibration images
-output_file = "~/SAuto/watch_move/src/watch/camera_info/camera.yaml"  # Where to save calibration
+output_file = os.path.expanduser("~/SAuto/watch_move/src/watch/camera_info/camera.yaml")
 
 # === Prepare object points like (0,0,0), (1,0,0), ..., (8,5,0) ===
 objp = np.zeros((chessboard_size[0]*chessboard_size[1], 3), np.float32)
@@ -64,4 +64,4 @@ fs.write("camera_matrix", camera_matrix)
 fs.write("distortion_coefficients", dist_coeffs)
 fs.release()
 
-print(f"\n✅ Calibration saved to '{output_file}'")
+print(f"\n Calibration saved to '{output_file}'")
