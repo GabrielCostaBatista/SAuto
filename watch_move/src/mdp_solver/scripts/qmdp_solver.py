@@ -30,8 +30,8 @@ pomdp = POMDP(maze, start, goal,
 
 pomdp.solve_mdp(tol=1e-4)
 
-b = np.zeros(pomdp.S)
-b[pomdp.state_index[start]] = 1.0
+belief = np.zeros(pomdp.S)
+belief[pomdp.state_index[start]] = 1.0
 
 CELL_SIZE       = 0.25      # metres per grid‐cell
 LINEAR_SPEED    = 0.2      # m/s   → tune so CELL_TIME = CELL_SIZE/LINEAR_SPEED
@@ -92,11 +92,11 @@ def main():
                 
                 # Get the next state from the POMDP solver
                 # 1) pick action by QMDP policy
-                a_idx = pomdp.qmdp_action(b)
+                a_idx = pomdp.qmdp_action(belief)
 
                 # 2) simulate true next state
                 probs = pomdp.T[a_idx, pomdp.state_index[true]]
-                true = pomdp.states[np.random.choice(pomdp.S, p=probs)]
+                true  = pomdp.states[np.random.choice(pomdp.S, p=probs)]
 
                 r, c = true
                 dr, dc = r0 - r, c0 - c
@@ -134,9 +134,9 @@ def main():
                 rospy.loginfo("Moved to cell (%d,%d)", r0, c0)
                 rospy.loginfo("Observing...: ")
 
-                b = pomdp.update_belief(b, a_idx, "None", "measured")
+                belief = pomdp.update_belief(belief, a_idx, None, "measured")
 
-                if b[pomdp.state_index[goal]] > 0.99:
+                if belief[pomdp.state_index[goal]] > 0.99:
                     rospy.loginfo("Reached goal. Path complete.")
                     break
 

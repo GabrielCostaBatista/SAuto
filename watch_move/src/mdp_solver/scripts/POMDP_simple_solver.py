@@ -95,9 +95,9 @@ class POMDP:
         nx,ny = np.clip(x+dx,0,self.maze.shape[0]-1), np.clip(y+dy,0,self.maze.shape[1]-1)
         return (nx,ny) if self.maze[nx,ny]!=1 else s
 
-    def update_belief(self, b, a_idx, obs, true):
+    def update_belief(self, belief, a_idx, obs, true):
             # 1) Prediction step
-        b_bar = self.T[a_idx].T.dot(b)
+        b_bar = self.T[a_idx].T.dot(belief)
 
         # 2) Correction step
         if obs is None:
@@ -118,9 +118,9 @@ class POMDP:
             # if everything zero (unlikely), fall back to uniform
             return np.ones_like(b_bar) / len(b_bar)
 
-    def reward(self, b, a_idx):
+    def reward(self, belief, a_idx):
         # expected immediate reward under belief b and action a
-        return b.dot(self.R[a_idx])
+        return belief.dot(self.R[a_idx])
     
     def solve_mdp(self, tol=1e-3):
         # initialise V(s)=0
