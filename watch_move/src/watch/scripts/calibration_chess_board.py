@@ -6,7 +6,7 @@ import os
 
 # === CONFIGURATION ===
 chessboard_size = (8, 6)  # Number of inner corners (columns, rows)
-square_size = 10         # Real-world square size (can be 1.0 if units don’t matter)
+square_size = 0.022         # Real-world square size (can be 1.0 if units don’t matter)
 image_folder = "calibration_images"  # Folder containing calibration images
 output_file = "~/SAuto/watch_move/src/watch/camera_info/camera.yaml"  # Where to save calibration
 
