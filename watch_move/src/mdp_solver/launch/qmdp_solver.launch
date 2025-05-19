@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="mdp_solver" type="qmdp_solver.py" name="qmdp_solver" output="screen"/>
+</launch>
