@@ -13,7 +13,11 @@ class ArucoCompressedDetector:
         self.parameters = cv2.aruco.DetectorParameters_create()
 
         # === Load camera calibration ===
-        calib_file = os.path.join(os.path.dirname(__file__), 'camera_calibration.yaml')
+        calib_file = rospy.get_param('~calibration_file')
+        if not os.path.exists(calib_file):
+            rospy.logerr(f"[ERROR] Calibration file not found: {calib_file}")
+            exit(1)
+        rospy.loginfo(f"[INFO] Loading camera calibration from: {calib_file}")
         fs = cv2.FileStorage(calib_file, cv2.FILE_STORAGE_READ)
         self.camera_matrix = fs.getNode("camera_matrix").mat()
         self.dist_coeffs = fs.getNode("distortion_coefficients").mat()
