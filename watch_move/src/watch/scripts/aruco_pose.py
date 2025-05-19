@@ -22,11 +22,11 @@ class ArucoCompressedDetector:
             rospy.logerr(f"[ERROR] Calibration file not found: {calib_file}")
             exit(1)
         rospy.loginfo(f"[INFO] Loading camera calibration from: {calib_file}")
-        with open(calib_file, 'r') as f:
-            calib_data = yaml.safe_load(f)
-        self.camera_matrix = np.array(calib_data['camera_matrix']['data']).reshape((3, 3))
-        self.dist_coeffs = np.array(calib_data['distortion_coefficients']['data']).reshape((1, 5))
-
+        fs = cv2.FileStorage(calib_file, cv2.FILE_STORAGE_READ)
+        self.camera_matrix = fs.getNode("camera_matrix").mat()
+        self.dist_coeffs = fs.getNode("distortion_coefficients").mat()
+        fs.release()
+        
         if self.camera_matrix is None or self.dist_coeffs is None:
             rospy.logerr("[ERROR] Failed to load calibration.")
             exit(1)
