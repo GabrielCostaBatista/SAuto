@@ -38,7 +38,7 @@ LINEAR_SPEED    = 0.2      # m/s   → tune so CELL_TIME = CELL_SIZE/LINEAR_SPEE
 ANGULAR_SPEED   = 1 #math.pi/2 # rad/s → tune so TURN_TIME_90 = (π/2)/ANGULAR_SPEED
 
 CELL_TIME    = CELL_SIZE / LINEAR_SPEED
-TURN_TIME_90 = (math.pi/2) / 
+TURN_TIME_90 = (math.pi/2) / ANGULAR_SPEED
 
 # Import the AlphaBot driver
 try:
@@ -85,6 +85,7 @@ def main():
             MOTOR_PWM = 20  # wheel PWM 0–100%; tune as needed
             heading = 0     # 0=E, 1=N, 2=W, 3=S
             r0, c0 = start
+            true = start
 
             for i in range(100000):
 
@@ -96,6 +97,7 @@ def main():
                 # 2) simulate true next state
                 probs = pomdp.T[a_idx, pomdp.state_index[true]]
                 true = pomdp.states[np.random.choice(pomdp.S, p=probs)]
+
                 r, c = true
                 dr, dc = r0 - r, c0 - c
                 r0, c0 = r, c
@@ -130,10 +132,17 @@ def main():
                 Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
                 Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
                 rospy.loginfo("Moved to cell (%d,%d)", r0, c0)
-
                 rospy.loginfo("Observing...: ")
 
-            rospy.loginfo("Reached goal. Path complete.")
+                b = pomdp.update_belief(b, a_idx, "None", "measured")
+
+                if b[pomdp.state_index[goal]] > 0.99:
+                    rospy.loginfo("Reached goal. Path complete.")
+                    break
+
+                
+
+            rospy.loginfo("No goal reached. Path not complete.")
             # exit the while‐loop
             break
 

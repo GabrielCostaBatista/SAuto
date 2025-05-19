@@ -95,14 +95,28 @@ class POMDP:
         nx,ny = np.clip(x+dx,0,self.maze.shape[0]-1), np.clip(y+dy,0,self.maze.shape[1]-1)
         return (nx,ny) if self.maze[nx,ny]!=1 else s
 
-    def update_belief(self, b, a_idx, obs):
+    def update_belief(self, b, a_idx, obs, true):
+            # 1) Prediction step
         b_bar = self.T[a_idx].T.dot(b)
-        if obs=="marker":
-            b_bar *= self.O
+
+        # 2) Correction step
+        if obs is None:
+            # “I saw nothing” → penalise any state that _would_ have produced a marker
+            b_bar *= (1.0 - self.O)       # O(s)=P(marker|s)
         else:
-            b_bar *= (1-self.O)
+            # “I know I’m at obs” → collapse belief to that exact cell
+            b_new = np.zeros_like(b_bar)
+            idx = self.state_index[true]
+            b_new[idx] = 1.0
+            return b_new
+
+        # 3) Normalisation
         total = b_bar.sum()
-        return b_bar/total if total>0 else np.ones(self.S)/self.S
+        if total > 0:
+            return b_bar / total
+        else:
+            # if everything zero (unlikely), fall back to uniform
+            return np.ones_like(b_bar) / len(b_bar)
 
     def reward(self, b, a_idx):
         # expected immediate reward under belief b and action a
