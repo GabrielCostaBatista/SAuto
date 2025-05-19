@@ -126,6 +126,8 @@ def main():
                 Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
                 rospy.loginfo("Moved to cell (%d,%d)", nr, nc)
 
+                
+
             rospy.loginfo("Reached goal. Path complete.")
             # exit the while‐loop
             break
