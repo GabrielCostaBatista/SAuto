@@ -3,10 +3,11 @@
 #######################
 
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-from PIL import Image
+#import matplotlib.pyplot as plt
+#from matplotlib.colors import ListedColormap
+#from PIL import Image
 
+"""
 # Maze: 0=free,1=wall,2=marker
 maze = np.array([
     [0,0,2,0,1,0,0,0,0],
@@ -30,7 +31,7 @@ maze[arr < th_black] = 1
 
 mask_gray = (arr >= th_black) & (arr < th_gray)
 maze[mask_gray] = 2
-
+"""
 
 class POMDP:
     def __init__(self, maze, start, goal,
@@ -136,6 +137,8 @@ class POMDP:
         exp_Q = belief.dot(self.Q.T)
         return int(np.argmax(exp_Q))
 
+
+"""
 start = (0, 0)
 goal = (0, 26)
 
@@ -207,3 +210,4 @@ ax.grid(True)
 plt.legend()
 plt.tight_layout()
 plt.show()
+"""
