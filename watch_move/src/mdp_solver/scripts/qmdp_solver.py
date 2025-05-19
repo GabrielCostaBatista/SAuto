@@ -65,7 +65,7 @@ def main():
     rate = rospy.Rate(10)
 
     # Initialize the AlphaBot hardware controller
-    global Ab, settings, pwm, HPulse, VPulse, HStep, VStep, t
+    global Ab, settings, pwm, HPulse, VPulse, HStep, VStep, t, belief
     Ab = AlphaBot()
 
     # Initialize PWM for servos
@@ -109,7 +109,7 @@ def main():
                 elif (dr, dc) == ( 0, -1): desired = 2  # west
                 elif (dr, dc) == ( 1,  0): desired = 3  # south
                 else:
-                    rospy.logwarn("Invalid step from (%d,%d) to (%d,%d)", r, c, nr, nc)
+                    rospy.logwarn("Invalid step from (%d,%d) to (%d,%d)", r0, c0, r, c)
                     continue
 
                 # rotate via the shortest sequence of 90° turns
