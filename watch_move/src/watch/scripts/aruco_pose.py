@@ -8,6 +8,8 @@ import os
 
 class ArucoCompressedDetector:
     def __init__(self):
+        rospy.init_node('aruco_compressed_detector', anonymous=True)
+
         self.bridge = CvBridge()
         self.dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
         self.parameters = cv2.aruco.DetectorParameters_create()
@@ -30,12 +32,12 @@ class ArucoCompressedDetector:
             rospy.loginfo("[INFO] Camera calibration loaded.")
 
         # === Set marker length in real-world units (e.g., cm or meters) ===
-        self.marker_length = 5.0  # e.g., 5 cm or 0.05 m
+        self.marker_length = 0.10  # 10 cm marker length
 
-        rospy.init_node('aruco_compressed_detector', anonymous=True)
         rospy.Subscriber("/raspicam_node/image/compressed", CompressedImage, self.image_callback)
         rospy.loginfo("ArUco detector node started. Waiting for images...")
         rospy.spin()
+        
 
     def image_callback(self, msg):
         try:
