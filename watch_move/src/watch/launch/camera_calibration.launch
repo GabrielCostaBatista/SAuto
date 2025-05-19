@@ -1,0 +1,21 @@
+<!-- filepath: /home/ubuntu/SAuto/watch_move/src/watch/launch/camera_calibration.launch -->
+<launch>
+  <!-- Launch the Raspberry Pi Camera Node -->
+  <node pkg="raspicam_node" type="raspicam_node" name="raspicam_node" output="screen">
+    <param name="framerate" value="10"/>
+    <param name="width" value="640"/>
+    <param name="height" value="480"/>
+  </node>
+
+  <!-- Launch the camera calibration node -->
+  <node pkg="camera_calibration" type="cameracalibrator.py" name="cameracalibrator" output="screen"
+        args="--size 9x7 --square 0.022 --no-service-check image:=/raspicam_node/image camera:=/raspicam_node">
+    <!-- Parameters explained:
+         * size 9x7: The checkerboard has 9 squares in width and 7 squares in height
+         * square 0.022: Each square is 0.022 meters (2.2 cm) in size
+         * no-service-check: Skip checking for required services
+         * image: Topic for input images
+         * camera: Base name for camera topics
+    -->
+  </node>
+</launch>

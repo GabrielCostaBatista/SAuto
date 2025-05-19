@@ -9,32 +9,42 @@ import signal
 import threading
 import math
 from MDP_simple_maze_solver import MDP
+import numpy as np
 
 ###################
 # Maze Definition #
 ###################
 
+#maze = np.array([
+ #   [0,0,0,0,1,0,0, 0, 0],
+  #  [1,1,1,0,1,0,1,1,1],
+   # [0,0,0,0,1,0,1,0,0],
+    #[0,1,0,1,1,0,1,1,0],
+    #[0,1,0,0,1,0,0,1,0],
+    #[0,0,1,0,0,0,0,0,0],
+#], dtype=int)
+
 maze = np.array([
-    [0,0,0,0,1,0,0,0,0],
-    [1,1,1,0,1,0,1,1,1],
-    [0,0,0,0,1,0,1,0,0],
-    [0,1,0,1,1,0,1,1,0],
-    [0,1,0,0,1,0,0,1,0],
-    [0,0,1,0,0,0,0,0,0],
+    [0,1,0,0,1,0,0],
+    [0,1,1,0,1,0,1],
+    [0,1,0,0,1,0,1],
+    [0,1,0,1,1,0,1],
+    [0,1,1,1,1,1,1],
+    [0,0,0,0,0,0,0],
 ], dtype=int)
 
 n_rows, n_cols = maze.shape
 start = (0, 0)                # In this case, the robot starts at the top left corner
-goal  = (0, n_cols-1)         # In this case, the robot starts at the top right corner
+goal  = (n_rows-1, n_cols-1)         # In this case, the robot starts at the bottom right corner
 
 # Create an MDP object
 mdp = MDP(maze, start, goal)
 
 path = mdp.get_optimal_path()
 
-CELL_SIZE       = 0.10      # metres per grid‐cell
-LINEAR_SPEED    = 0.05      # m/s   → tune so CELL_TIME = CELL_SIZE/LINEAR_SPEED
-ANGULAR_SPEED   = math.pi/2 # rad/s → tune so TURN_TIME_90 = (π/2)/ANGULAR_SPEED
+CELL_SIZE       = 0.25      # metres per grid‐cell
+LINEAR_SPEED    = 0.2      # m/s   → tune so CELL_TIME = CELL_SIZE/LINEAR_SPEED
+ANGULAR_SPEED   = 1 #math.pi/2 # rad/s → tune so TURN_TIME_90 = (π/2)/ANGULAR_SPEED
 
 CELL_TIME    = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90 = (math.pi/2) / ANGULAR_SPEED
@@ -80,7 +90,7 @@ def main():
     rospy.loginfo("Initializing AlphaBot...")
     try:
         while not rospy.is_shutdown():
-            MOTOR_PWM = 80  # wheel PWM 0–100%; tune as needed
+            MOTOR_PWM = 20  # wheel PWM 0–100%; tune as needed
             heading = 0     # 0=E, 1=N, 2=W, 3=S
 
             for (r, c), (nr, nc) in zip(path, path[1:]):

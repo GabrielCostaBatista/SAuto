@@ -1,0 +1,15 @@
+<launch>
+  <!-- Launch the Raspberry Pi Camera Node -->
+  <node pkg="raspicam_node" type="raspicam_node" name="raspicam_node" output="screen">
+    <param name="framerate" value="2"/>  <!-- Lower framerate for calibration -->
+    <param name="width" value="640"/>
+    <param name="height" value="480"/>
+  </node>
+
+  <!-- Launch the calibration image capture node -->
+  <node pkg="watch" type="capture_calibration_images.py" name="capture_calibration_images" output="screen">
+    <param name="num_images" value="20"/>  <!-- Number of images to capture -->
+    <param name="delay" value="3"/>        <!-- Seconds between captures -->
+    <param name="use_compressed" value="true"/>  <!-- Use compressed images -->
+  </node>
+</launch>
