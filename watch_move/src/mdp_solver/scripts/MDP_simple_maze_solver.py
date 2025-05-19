@@ -163,7 +163,7 @@ class MDP:
         plt.tight_layout()
         plt.show()
 
-"""
+
 
 ###############
 # Run the MDP #
@@ -175,4 +175,3 @@ path = mdp.get_optimal_path()
 mdp.optimal_path_plot(path)
 mdp.value_function_plot()
 
-"""
