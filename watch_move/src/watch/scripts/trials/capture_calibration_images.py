@@ -50,12 +50,13 @@ class CaptureCalibrationImages:
             if current_time - self.last_capture_time >= self.delay_between_captures:
                 cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
                 # Add a visual indicator that we're capturing this frame
-                timestamp = time.strftime("%H:%M:%S")
-                height, width = cv_image.shape[:2]
-                cv2.putText(cv_image, f"Calibration image {self.image_count+1}/{self.num_images}", 
-                           (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-                cv2.putText(cv_image, f"{timestamp}", 
-                           (width - 150, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                # Code that was previously erased and I don't know if it was important so I leave it here commented
+                # timestamp = time.strftime("%H:%M:%S")
+                # height, width = cv_image.shape[:2]
+                # cv2.putText(cv_image, f"Calibration image {self.image_count+1}/{self.num_images}", 
+                #            (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                # cv2.putText(cv_image, f"{timestamp}", 
+                #            (width - 150, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                 
                 self.save_image(cv_image)
                 self.last_capture_time = current_time
