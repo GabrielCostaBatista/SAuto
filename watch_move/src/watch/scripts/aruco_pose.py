@@ -78,7 +78,7 @@ class ArucoCompressedDetector:
                 # Set position
                 marker_pose.pose.position.x = float(tvec[0])
                 marker_pose.pose.position.y = float(tvec[1])
-                marker_pose.pose.position.z = float(tvec[2])
+                marker_pose.pose.position.z = float(tvec[2]) + 0.06  # Adjust Z position given camera position
                 
                 # Set orientation to identity (no rotation info needed)
                 marker_pose.pose.orientation.x = 0.0
