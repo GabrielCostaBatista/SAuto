@@ -13,4 +13,7 @@
     <node pkg="watch" type="aruco_pose.py" name="aruco_pose" output="screen">
         <param name="calibration_file" value="$(find watch)/camera_info/camera.yaml"/>
     </node>
+
+    <!-- Launch the ArUco marker listener node -->
+    <node pkg="watch" type="aruco_listener.py" name="aruco_listener" output="screen"/>
 </launch>
