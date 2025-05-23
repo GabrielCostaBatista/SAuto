@@ -1,227 +1,160 @@
-#######################
-# Important Libraries #
-#######################
-
 import numpy as np
-#import matplotlib.pyplot as plt
-#from matplotlib.colors import ListedColormap
-#from PIL import Image
 
-"""
-# Maze: 0=free,1=wall,2=marker
-maze = np.array([
-    [0,0,2,0,1,0,0,0,0],
-    [1,1,1,0,1,2,1,1,1],
-    [0,0,0,0,1,0,1,0,0],
-    [0,1,0,1,1,0,1,1,2],
-    [0,1,2,0,1,0,0,1,0],
-    [0,0,1,0,0,0,0,0,0],
-], dtype=int)
+class Maze:
+    """
+    Represents a 2D grid maze where 0 = free cell, 1 = wall.
+    States are indices of free cells.
+    Checkpoints are user-defined cells where the robot can localise perfectly.
+    """
+    def __init__(self, grid, start, goal, checkpoints=None):
+        self.grid = np.array(grid)
+        self.start = tuple(start)
+        self.goal = tuple(goal)
+        self.checkpoints = [tuple(c) for c in (checkpoints or [])]
+        self._idx_map = {}
+        self._rev_map = {}
+        idx = 0
+        for i in range(self.grid.shape[0]):
+            for j in range(self.grid.shape[1]):
+                if self.grid[i, j] == 0:
+                    self._idx_map[(i, j)] = idx
+                    self._rev_map[idx] = (i, j)
+                    idx += 1
+        self.n_states = idx
+        self.start_idx = self._idx_map[self.start]
+        self.goal_idx = self._idx_map[self.goal]
+        # checkpoint state indices
+        self.checkpoint_idxs = [self._idx_map[c] for c in self.checkpoints]
 
-img = Image.open("maze_with_markers.png").convert('L')
-arr = np.array(img)
+    def state_to_coord(self, s):
+        return self._rev_map[s]
 
-# define your thresholds
-th_black = 20
-th_gray  = 200
+    def coord_to_state(self, coord):
+        return self._idx_map[tuple(coord)]
 
-maze = np.zeros_like(arr, dtype=int)
-
-maze[arr < th_black] = 1
-
-mask_gray = (arr >= th_black) & (arr < th_gray)
-maze[mask_gray] = 2
-"""
-
-class POMDP:
-    def __init__(self, maze, start, goal,
-                 gamma=0.95, r_step=-1, r_goal=1000, slip=0.2):
-        
+class MDP:
+    """
+    Computes optimal Q and V using value iteration for the goal-reaching task.
+    """
+    def __init__(self, maze, slip_prob=0.1, step_cost=-1, goal_reward=100, gamma=0.95):
         self.maze = maze
-        self.start = start
-        self.goal = goal
+        self.n = maze.n_states
+        self.actions = ['up','down','left','right']
+        self.slip = slip_prob
         self.gamma = gamma
-        self.r_step = r_step
-        self.r_goal = r_goal
-        self.slip = slip
+        self.step_cost = step_cost
+        self.goal_reward = goal_reward
+        # Transition (P) and reward (R) tensors
+        self.P = np.zeros((self.n, len(self.actions), self.n))
+        self.R = np.full((self.n, len(self.actions), self.n), self.step_cost)
 
-        # Actions and states
-        self.actions = [(-1,0),(1,0),(0,-1),(0,1),(0,0)]  # up,down,left,right,observe
-        self.states = [(x,y) for x in range(maze.shape[0])
-                                for y in range(maze.shape[1])
-                                if maze[x,y] in (0,2)]
-        
-        self.S = len(self.states)
-        self.A = len(self.actions)
-        self.state_index = {s:i for i,s in enumerate(self.states)}
+        directions = {'up':(-1,0), 'down':(1,0), 'left':(0,-1), 'right':(0,1)}
+        for s in range(self.n):
+            if s == maze.goal_idx:
+                self.P[s,:,s] = 1.0
+                continue
+            ci = maze.state_to_coord(s)
+            for a_idx, a in enumerate(self.actions):
+                for b in self.actions:
+                    prob = (1 - self.slip) if b == a else self.slip / 3
+                    ni, nj = ci[0] + directions[b][0], ci[1] + directions[b][1]
+                    sp = s
+                    if (ni, nj) in maze._idx_map:
+                        sp = maze.coord_to_state((ni, nj))
+                    self.P[s, a_idx, sp] += prob
+                    if sp == maze.goal_idx:
+                        self.R[s, a_idx, sp] = self.goal_reward
+        self.V = np.zeros(self.n)
+        self.Q = np.zeros((self.n, len(self.actions)))
 
-        # Precompute transition model T[a]
-        self.T = np.zeros((self.A, self.S, self.S))
-        slip_map = {(-1,0):(0,1),(0,1):(1,0),(1,0):(0,-1),(0,-1):(-1,0)}
-        for a_idx, action in enumerate(self.actions):
-            for s_idx, s in enumerate(self.states):
-                if action==(0,0):
-                    self.T[a_idx,s_idx,s_idx]=1.0
-                else:
-                    intended = self.move(s, action)
-                    slipped  = self.move(s, slip_map[action])
-                    i_int = self.state_index[intended]
-                    i_slp = self.state_index[slipped]
-                    self.T[a_idx,s_idx,i_int] += 1-self.slip
-                    self.T[a_idx,s_idx,i_slp] += self.slip
-
-        # Precompute observation model O
-        self.O = np.array([1.0 if maze[s]==2 else 0.0 for s in self.states])
-
-        # Reward model R[a,s] = expected reward under slip
-        self.R = np.zeros((self.A, self.S))
-        for a_idx, action in enumerate(self.actions):
-            for s_idx, s in enumerate(self.states):
-                if action==(0,0):
-                    self.R[a_idx,s_idx]=0.0
-                else:
-                    intended = self.move(s, action)
-                    slipped  = self.move(s, slip_map[action])
-                    def cell_r(c):
-                        if c==self.goal: return self.r_goal
-                        if maze[c]==2:   return 2.0
-                        return self.r_step
-                    r_int = cell_r(intended)
-                    r_slp = cell_r(slipped)
-                    self.R[a_idx,s_idx] = (1-self.slip)*r_int + self.slip*r_slp
-
-    def move(self, s, action):
-        x,y = s; dx,dy = action
-        nx,ny = np.clip(x+dx,0,self.maze.shape[0]-1), np.clip(y+dy,0,self.maze.shape[1]-1)
-        return (nx,ny) if self.maze[nx,ny]!=1 else s
-
-    def update_belief(self, belief, a_idx, obs, true):
-            # 1) Prediction step
-        b_bar = self.T[a_idx].T.dot(belief)
-
-        # 2) Correction step
-        if obs is None:
-            # “I saw nothing” → penalise any state that _would_ have produced a marker
-            b_bar *= (1.0 - self.O)       # O(s)=P(marker|s)
-        else:
-            # “I know I’m at obs” → collapse belief to that exact cell
-            b_new = np.zeros_like(b_bar)
-            idx = self.state_index[true]
-            b_new[idx] = 1.0
-            return b_new
-
-        # 3) Normalisation
-        total = b_bar.sum()
-        if total > 0:
-            return b_bar / total
-        else:
-            # if everything zero (unlikely), fall back to uniform
-            return np.ones_like(b_bar) / len(b_bar)
-
-    def reward(self, belief, a_idx):
-        # expected immediate reward under belief b and action a
-        return belief.dot(self.R[a_idx])
-    
-    def solve_mdp(self, tol=1e-3):
-        # initialise V(s)=0
-        V = np.zeros(self.S)
+    def value_iteration(self, eps=1e-3):
         while True:
-            delta = 0.0
-            for s_idx in range(self.S):
-                v_old = V[s_idx]
-                # Bellman backup: max over actions
-                V[s_idx] = max(
-                    self.R[a_idx, s_idx]
-                    + self.gamma * (self.T[a_idx][s_idx].dot(V))
-                    for a_idx in range(self.A)
-                )
-                delta = max(delta, abs(V[s_idx] - v_old))
-            if delta < tol:
+            delta = 0
+            for s in range(self.n):
+                if s == self.maze.goal_idx:
+                    continue
+                q_vals = np.sum(self.P[s] * (self.R[s] + self.gamma * self.V), axis=1)
+                max_q = np.max(q_vals)
+                delta = max(delta, abs(max_q - self.V[s]))
+                self.V[s] = max_q
+            if delta < eps:
                 break
-        # store V
-        self.V = V
-        # compute Q[a,s]
-        self.Q = np.zeros((self.A, self.S))
-        for a_idx in range(self.A):
-            # vectorised: R[a] + γ * T[a] @ V
-            self.Q[a_idx] = self.R[a_idx] + self.gamma * (self.T[a_idx].dot(V))
+        for s in range(self.n):
+            self.Q[s] = np.sum(self.P[s] * (self.R[s] + self.gamma * self.V), axis=1)
 
-    def qmdp_action(self, belief):
-        # expected Q for each action: sum_s b(s) * Q[a,s]
-        exp_Q = belief.dot(self.Q.T)
-        return int(np.argmax(exp_Q))
+class QMDPController:
+    """
+    Controls a real robot with QMDP policy; uses checkpoint detections for relocalisation.
+    """
+    def __init__(self, mdp, entropy_thresh=0.9):
+        self.mdp = mdp
+        self.belief = None
+        self.entropy_thresh = entropy_thresh
 
+    def init_belief(self):
+        # Initialise to known start position
+        b = np.zeros(self.mdp.n)
+        b[self.mdp.maze.start_idx] = 1.0
+        self.belief = b
 
-"""
-start = (0, 0)
-goal = (0, 26)
+    def belief_entropy(self):
+        p = self.belief
+        # avoid log(0)
+        return -np.sum(p[p>0] * np.log(p[p>0]))
 
-pomdp = POMDP(maze, start, goal,
-              gamma=0.95, r_step=-1, r_goal=1000, slip=0.2)
+    def predict_belief(self, action_idx):
+        # Propagate belief using transition model
+        b_pred = self.belief @ self.mdp.P[:, action_idx, :]
+        self.belief = b_pred / b_pred.sum()
 
-# one-shot QMDP solve
-pomdp.solve_mdp(tol=1e-4)
+    def relocalise(self, state_idx):
+        # On checkpoint detection, collapse belief
+        b = np.zeros(self.mdp.n)
+        b[state_idx] = 1.0
+        self.belief = b
 
-# initial belief
-b = np.zeros(pomdp.S)
-b[pomdp.state_index[start]] = 1.0
+    def select_action(self):
+        # If too uncertain, seek nearest checkpoint
+        if self.belief.max() < self.entropy_thresh:
+            # most probable coord
+            mp = int(np.argmax(self.belief))
+            ci = self.mdp.maze.state_to_coord(mp)
+            # find nearest checkpoint
+            cps = [self.mdp.maze.state_to_coord(c) for c in self.mdp.maze.checkpoint_idxs]
+            dists = [abs(ci[0]-y)+abs(ci[1]-x) for y,x in cps]
+            target = cps[int(np.argmin(dists))]
+            dy = target[0] - ci[0]; dx = target[1] - ci[1]
+            if abs(dy) > abs(dx):
+                action = 'down' if dy > 0 else 'up'
+            else:
+                action = 'right' if dx > 0 else 'left'
+            return self.mdp.actions.index(action)
+        # else exploit QMDP towards goal
+        exp_q = self.belief @ self.mdp.Q
+        return int(np.argmax(exp_q))
 
-true = start
-path = [true]
+    def control_loop(self, send_action, check_goal, detect_checkpoint, max_steps=200):
+        """
+        send_action(a_idx)->state_idx
+        check_goal(state_idx)->bool
+        detect_checkpoint(state_idx)->bool
+        """
+        self.init_belief()
+        true_state = self.mdp.maze.start_idx
+        true_path, believed_path = [self.mdp.maze.state_to_coord(true_state)], [self.mdp.maze.state_to_coord(np.argmax(self.belief))]
 
-for t in range(1000000):
-    # 1) pick action by QMDP policy
-    a_idx = pomdp.qmdp_action(b)
-
-    # 2) simulate true next state
-    probs = pomdp.T[a_idx, pomdp.state_index[true]]
-    true = pomdp.states[np.random.choice(pomdp.S, p=probs)]
-
-    # 3) simulate observation
-    obs = "marker" if (np.random.rand() < pomdp.O[pomdp.state_index[true]]) else None
-
-    if obs is None:
-        b = pomdp.update_belief(b, a_idx, obs)
-    else:
-        b = pomdp.update_belief(b, a_idx, obs)
-        b[pomdp.state_index[true]] = 1.0
-
-
-    path.append(true)
-    if true == goal or b[pomdp.state_index[goal]] > 0.99:
-        print(f"Goal reached at step {t+1}")
-        break
-
-##########################
-# Testing Implementation #
-##########################
-
-cmap = ListedColormap(['white', 'black', 'gray'])
-
-n_rows, n_cols = maze.shape
-
-
-fig, ax = plt.subplots(figsize=(6, 4))
-
-cmap = ListedColormap(['white', 'black', 'gray'])
-ax.imshow(maze, cmap=cmap, vmin=0, vmax=2, origin='upper')
-
-# 4) Overlay the path in blue with circle markers
-ys, xs = zip(*path)
-ax.plot(xs, ys, '-o', linewidth=2, label='path')
-
-# 5) Mark start (green) and goal (red)
-ax.scatter([start[1], goal[1]], [start[0], goal[0]],
-           c=['green', 'red'], s=100, label='start/goal')
-
-# 6) Formatting
-ax.set_title("Optimal Path in Maze")
-ax.set_xticks(range(n_cols))
-ax.set_yticks(range(n_rows))
-ax.set_xlim(-0.5, n_cols - 0.5)
-ax.set_ylim(n_rows - 0.5, -0.5)
-ax.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
-"""
+        for _ in range(max_steps):
+            a_idx = self.select_action()
+            # execute action
+            true_state = send_action(a_idx)
+            true_path.append(self.mdp.maze.state_to_coord(true_state))
+            # check for checkpoint
+            if detect_checkpoint(true_state):
+                self.relocalise(true_state)
+            else:
+                self.predict_belief(a_idx)
+            believed_path.append(self.mdp.maze.state_to_coord(np.argmax(self.belief)))
+            # goal check
+            if check_goal(true_state):
+                break
+        return true_path, believed_path
