@@ -33,9 +33,9 @@ def main():
         [0,0,0,0,0]
     ]
     start, goal = (0,0), (4,0)
-    checkpoints = [(0,0,0), (1,4,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+    checkpoints = [(0,0,1), (1,4,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
-    marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position
+    marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
     # Send message to topic indicating the markers position
     marker_pub = rospy.Publisher('global_locations/marker_pose', PoseArray, queue_size=10)
