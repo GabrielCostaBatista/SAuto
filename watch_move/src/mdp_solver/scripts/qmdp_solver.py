@@ -98,13 +98,6 @@ def main():
 
     # ——— shutdown handler —————————————————————————————————————
     settings = termios.tcgetattr(sys.stdin)
-<<<<<<< HEAD
-    def shutdown(signum=None, frame=None):
-        rospy.loginfo('Shutting down')
-        Ab.stop()
-        cmd_pub.publish(Twist())     # stop cmd_vel
-=======
-
 
     rospy.loginfo("Initializing AlphaBot...")
     try:
@@ -180,7 +173,6 @@ def main():
         pub.publish(twist)  # Stop the robot
         if 'Ab' in globals():
             Ab.stop()  # Ensure motors are stopped
->>>>>>> 5e327c02ec4a405f3dad5c707a944a620d3c180c
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
         rospy.signal_shutdown('exit')
         sys.exit(0)
