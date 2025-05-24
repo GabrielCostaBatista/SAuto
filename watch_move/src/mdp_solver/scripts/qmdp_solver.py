@@ -7,8 +7,6 @@ from alphabot_driver.PCA9685 import PCA9685
 from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
-<<<<<<< HEAD
-=======
 maze = np.array([
     [0,0,0,0,1,0,0,0,0],
     [1,1,1,0,1,0,1,1,1],
@@ -57,24 +55,14 @@ def clean_shutdown(signum=None, frame=None):
     rospy.signal_shutdown("User requested shutdown")
     sys.exit(0)
 
->>>>>>> 5e327c02ec4a405f3dad5c707a944a620d3c180c
 def main():
     # ——— ROS & robot setup —————————————————————————————————————
     rospy.init_node('qmdp_controller')
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
-<<<<<<< HEAD
-    CELL_SIZE     = 0.25      # m per cell
-    LINEAR_SPEED  = 0.2       # m/s
-    ANGULAR_SPEED = math.pi/2 # rad/s for 90°
-    CELL_TIME     = CELL_SIZE / LINEAR_SPEED
-    TURN_TIME_90  = (math.pi/4) / ANGULAR_SPEED
-    MOTOR_PWM     = 10        # wheel PWM (0–100%)
-=======
     # Initialize the AlphaBot hardware controller
     global Ab, settings, pwm, HPulse, VPulse, HStep, VStep, t, belief
     Ab = AlphaBot()
->>>>>>> 5e327c02ec4a405f3dad5c707a944a620d3c180c
 
     Ab = AlphaBot()
     pwm = PCA9685(0x40)
