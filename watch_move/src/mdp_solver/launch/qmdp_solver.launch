@@ -1,3 +1,4 @@
 <launch>
     <node pkg="mdp_solver" type="qmdp_solver.py" name="qmdp_solver" output="screen"/>
+    <node pkg="watch" type="localization.py" name="localization" output="screen"/>
 </launch>

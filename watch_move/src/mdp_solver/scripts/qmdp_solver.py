@@ -36,8 +36,8 @@ def main():
     checkpoints = [(0,2), (1,4), (3,4), (4,2)]
 
     # Send message to topic indicating the markers position
-    marker_pub = rospy.Publisher('global_locations/marker_pose', PoseStamped, queue_size=10)
-    rospy.loginfo("Publishing marker positions to topic 'global_locations/marker_pose'")∫
+    marker_pub = rospy.Publisher('global_locations/marker_pose', PoseArray, queue_size=10)
+    rospy.loginfo("Publishing marker positions to topic 'global_locations/marker_pose'")
 
     pose_array = PoseArray()
     pose_array.header.stamp = rospy.Time.now()
