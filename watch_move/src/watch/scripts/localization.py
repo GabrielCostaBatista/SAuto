@@ -18,7 +18,7 @@ class RobotLocalizer:
         self.robot_pose_pub = rospy.Publisher('global_locations/robot_pose', PoseStamped, queue_size=10)
         
         # Data storage
-        self.global_markers = {}  # marker_id -> (x, y) in world coordinates
+        self.global_markers = {}  # marker_id -> (x, y, orientation) in world coordinates
         self.robot_observations = {}  # marker_id -> (x, y) in robot frame
         self.protected_marker_positions = {}  # marker_id -> (x, y) for protected markers
         
@@ -42,23 +42,16 @@ class RobotLocalizer:
         """
         Callback for global marker positions (world coordinates)
         Assumes marker IDs are encoded somehow - for now using index as ID
+        Orientation is encoded in z coordinate: 0=right, 1=top, 2=left, 3=bottom
         """
         self.global_markers.clear()
         for i, pose in enumerate(msg.poses):
             marker_id = i + NUM_PROTECTED_MARKERS
-            self.global_markers[marker_id] = (pose.position.x, pose.position.y)
-            rospy.loginfo(f"Updated global marker positions: {len(self.global_markers)} markers")
-    
-
-    def set_protected_marker_position(self, marker_id, x, y):
-        """
-        Set the global position of a protected marker
-        """
-        if marker_id in PROTECTED_MARKERS:
-            self.protected_marker_positions[marker_id] = (x, y)
-            rospy.loginfo(f"Updated protected marker {marker_id} position to ({x}, {y})")
-        else:
-            rospy.logwarn(f"Marker {marker_id} is not in the protected markers list")
+            # Extract orientation from z coordinate (encoded as 0=right, 1=top, 2=left, 3=bottom)
+            orientation = int(pose.position.z)
+            self.global_markers[marker_id] = (pose.position.x, pose.position.y, orientation)
+            rospy.loginfo(f"Updated global marker {marker_id}: pos=({pose.position.x:.3f}, {pose.position.y:.3f}), orientation={orientation}")
+        rospy.loginfo(f"Updated global marker positions: {len(self.global_markers)} markers")
 
 
     def aruco_marker_callback(self, msg):
@@ -76,7 +69,7 @@ class RobotLocalizer:
                 return
 
             # Store robot's observation of this marker
-            self.robot_observations[marker_id] = (msg.pose.position.x, msg.pose.position.y)
+            self.robot_observations[marker_id] = (msg.pose.position.x, msg.pose.position.y, msg.pose.position.z)
 
             # Compute robot pose based on this marker observation
             self.compute_robot_pose(marker_id)
@@ -85,14 +78,38 @@ class RobotLocalizer:
             rospy.logerr(f"Error parsing marker ID: {e}")
     
 
+    def discrete_orientation_to_yaw(self, discrete_orientation):
+        """
+        Convert discrete orientation to yaw angle in radians
+        0=right (0°), 1=top (90°), 2=left (180°), 3=bottom (270°)
+        """
+        return discrete_orientation * math.pi / 2
+    
+
+    def yaw_to_quaternion(self, yaw):
+        """
+        Convert yaw angle to quaternion
+        """
+        return {
+            'x': 0.0,
+            'y': 0.0,
+            'z': math.sin(yaw / 2.0),
+            'w': math.cos(yaw / 2.0)
+        }
+    
+
     def compute_robot_pose(self, observed_marker_id):
         """
         Compute robot's global pose using marker observation
         
         Theory:
-        - We know marker's position in world coordinates: P_world
-        - We observe marker's position relative to robot: P_robot  
-        - Robot's position in world = P_world - P_robot (simplified 2D case)
+        - We know marker's position and orientation in world coordinates: (x_m, y_m, θ_m)
+        - We observe marker's position relative to robot: (x_r, y_r) - no orientation
+        - We need to estimate robot's pose in world coordinates
+        
+        The marker's orientation tells us which direction the marker is facing in the world.
+        The robot's observation tells us where the marker appears relative to the robot.
+        We can use this to estimate both the robot's position and orientation.
         """
         # Check if we have global position for this marker
         if observed_marker_id in self.global_markers:
@@ -105,29 +122,41 @@ class RobotLocalizer:
             
             robot_observation = self.robot_observations[observed_marker_id]
             
-            # Convert robot observation to world coordinates
-            # Simple approach: assume robot and world frames are aligned (no rotation)
-            # For a more complete solution, you'd need to handle rotation transformations
+            # Extract marker data
+            marker_world_x, marker_world_y, marker_world_orientation = global_marker_pos
+            robot_x, robot_y, robot_z = robot_observation
+
+            # Compute robot orientation in world frame
+            robot_world_yaw = self.discrete_orientation_to_yaw(marker_world_orientation) - math.atan2(robot_x, robot_z) # Adjusting for observation angle (minus because x is positive to the right)
             
-            # Robot position = Global marker position - Robot's observation of marker
-            robot_x = global_marker_pos[0] - robot_observation[0]
-            robot_y = global_marker_pos[1] - robot_observation[1]
-            robot_z = 0.0  # Assuming robot moves on ground plane
+            # Compute robot position in world frame
+            # Transform the robot's observation vector to world coordinates using estimated robot orientation
+            cos_robot_yaw = math.cos(robot_world_yaw)
+            sin_robot_yaw = math.sin(robot_world_yaw)
+
+            # Robot's position in world coordinates
+            world_robot_x = marker_world_x - robot_z * cos_robot_yaw + robot_x * sin_robot_yaw
+            world_robot_y = marker_world_y - robot_z * sin_robot_yaw - robot_x * cos_robot_yaw
+            world_robot_z = 0.0  # Assuming robot moves on ground plane
+            
+            # Convert robot yaw to quaternion
+            quat = self.yaw_to_quaternion(robot_world_yaw)
             
             # Update robot pose
             self.robot_pose.header.stamp = rospy.Time.now()
-            self.robot_pose.pose.position.x = robot_x
-            self.robot_pose.pose.position.y = robot_y
-            self.robot_pose.pose.position.z = robot_z
+            self.robot_pose.pose.position.x = world_robot_x
+            self.robot_pose.pose.position.y = world_robot_y
+            self.robot_pose.pose.position.z = world_robot_z
             
-            # Set orientation to identity (no rotation estimation yet)
-            self.robot_pose.pose.orientation.x = 0.0
-            self.robot_pose.pose.orientation.y = 0.0
-            self.robot_pose.pose.orientation.z = 0.0
-            self.robot_pose.pose.orientation.w = 1.0
+            # Set orientation quaternion
+            self.robot_pose.pose.orientation.x = quat['x']
+            self.robot_pose.pose.orientation.y = quat['y']
+            self.robot_pose.pose.orientation.z = quat['z']
+            self.robot_pose.pose.orientation.w = quat['w']
             
             rospy.loginfo(f"Robot localized using marker {observed_marker_id}: "
-                        f"position=({robot_x:.3f}, {robot_y:.3f}, {robot_z:.3f})")
+                        f"position=({world_robot_x:.3f}, {world_robot_y:.3f}, {world_robot_z:.3f}), "
+                        f"yaw={math.degrees(robot_world_yaw):.1f}°")
 
         elif observed_marker_id in self.protected_marker_positions:
             rospy.loginfo(f"Watching protected marker with ID {observed_marker_id}")

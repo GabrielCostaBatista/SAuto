@@ -33,7 +33,9 @@ def main():
         [0,0,0,0,0]
     ]
     start, goal = (0,0), (4,0)
-    checkpoints = [(0,2), (1,4), (3,4), (4,2)]
+    checkpoints = [(0,0,0), (1,4,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+
+    marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position
 
     # Send message to topic indicating the markers position
     marker_pub = rospy.Publisher('global_locations/marker_pose', PoseArray, queue_size=10)
@@ -44,9 +46,9 @@ def main():
     pose_array.header.frame_id = "map"
     for checkpoint in checkpoints:
         pose = PoseStamped().pose  # Only the Pose part
-        pose.position.x = checkpoint[1] * CELL_SIZE
-        pose.position.y = checkpoint[0] * CELL_SIZE
-        pose.position.z = 0.0
+        pose.position.x = checkpoint[1] * CELL_SIZE + marker_orientation_dictionary[checkpoint[2]][0]
+        pose.position.y = checkpoint[0] * CELL_SIZE + marker_orientation_dictionary[checkpoint[2]][1]
+        pose.position.z = checkpoint[2] # Encoding orientation in z-axis
         pose.orientation.x = 0.0
         pose.orientation.y = 0.0
         pose.orientation.z = 0.0
@@ -61,6 +63,9 @@ def main():
     
     marker_pub.publish(pose_array)
     rospy.loginfo(f"Published {len(checkpoints)} checkpoints as a PoseArray")
+
+    # Delete 3rd coordinate
+    checkpoints = [checkpoint[:2] for checkpoint in checkpoints]
 
     # Create the maze and MDP
     maze       = Maze(grid, start, goal, checkpoints=checkpoints)
