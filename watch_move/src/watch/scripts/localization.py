@@ -195,9 +195,9 @@ class RobotLocalizer:
         
         return
 
-    def compute_robot_pose(self, observed_marker_id):
-        """
-        Compute robot's global pose using marker observation
+    # def compute_robot_pose(self, observed_marker_id):
+    #     """
+    #     Compute robot's global pose using marker observation
         
     #     Theory:
     #     - We know marker's position and orientation in world coordinates: (x_m, y_m, θ_m)
