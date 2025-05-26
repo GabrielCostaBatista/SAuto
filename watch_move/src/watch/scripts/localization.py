@@ -4,6 +4,7 @@ import numpy as np
 import math
 from geometry_msgs.msg import PoseStamped, PoseArray, Polygon, Point32
 from std_msgs.msg import Header
+from shapely.geometry import box
 
 # Number of protected markers (can be overridden via ROS parameter in launch file)
 NUM_PROTECTED_MARKERS = rospy.get_param('~num_protected_markers', 2)
@@ -13,6 +14,8 @@ PROTECTED_MARKERS = rospy.get_param('~protected_markers', [0, 1])
 
 # Get cell size from ROS parameter (default 0.25 meters)
 CELL_SIZE = rospy.get_param('~cell_size', 0.25)  # meters per cell
+
+RADIUS_N_STD_DEV = rospy.get_param('~radius_n_std_dev', 2)
 
 # Get number of frames to average from ROS parameter (default 10)
 NUM_FRAMES_TO_AVERAGE = rospy.get_param('~num_frames_to_average', 10)
@@ -140,78 +143,44 @@ class RobotLocalizer:
         - z: probability of being in that cell
         """
         # Check if marker is in global markers and is not a protected marker
-        if observed_marker_id not in self.global_markers:
-            rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database.")
-            return
+        if observed_marker_id in self.global_markers:
+            global_marker_pos = self.global_markers[observed_marker_id]
 
-        global_marker_pos = self.global_markers[observed_marker_id]
-        marker_x, marker_y, marker_orientation = global_marker_pos
-        
-        # Convert marker position from world coordinates to grid coordinates
-        marker_grid_x = int(marker_x / CELL_SIZE)
-        marker_grid_y = int(marker_y / CELL_SIZE)
-        
-        # Convert distance from world units to grid cells
-        distance_cells = int(distance)
-        
-        # Initial search bounds (circular area around marker)
-        i_min = marker_grid_x - distance_cells
-        i_max = marker_grid_x + distance_cells
-        j_min = marker_grid_y - distance_cells
-        j_max = marker_grid_y + distance_cells
-        
-        # Constrain search area based on marker orientation
-        # Orientation: 0=right, 1=top, 2=left, 3=bottom
-        if marker_orientation == 0:      # Marker faces right, robot is to the left
-            i_max = marker_grid_x
-        elif marker_orientation == 1:    # Marker faces up, robot is below
-            j_min = marker_grid_y
-        elif marker_orientation == 2:    # Marker faces left, robot is to the right
-            i_min = marker_grid_x
-        elif marker_orientation == 3:    # Marker faces down, robot is above
-            j_max = marker_grid_y
-        
-        # Calculate probabilities for cells within the constrained area
-        grid_probabilities = []
-        total_cells = 0
-        
+            # Get robot's observation of this marker
+            if observed_marker_id not in self.robot_observations:
+                rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
+                return
+            i_min = global_marker_pos[0] - distance
+            i_max = global_marker_pos[0] + distance
+            j_min = global_marker_pos[1] - distance
+            j_max = global_marker_pos[1] + distance
+
+            if global_marker_pos[2] == 0:
+                i_max = global_marker_pos[0]
+            elif global_marker_pos[2] == 1:
+                j_min = global_marker_pos[1]
+            elif global_marker_pos[2] == 2:
+                i_min = global_marker_pos[0]
+            elif global_marker_pos[2] == 3:
+                j_max = global_marker_pos[1] 
+        distance = np.mean(distances)
+        distance_error = np.std([first[0] for first in distances]) * RADIUS_N_STD_DEV
+        sector = annular_sector(center=(global_marke[:][1]r_pos[0], global_marker_pos[1]), r_inner=distance, r_outer=distance + 0.1, angle_start=0, angle_end=180)
+        total_sector_area = sector.area if sector.area > 0 else 1  # avoid zero division
         for i in range(i_min, i_max + 1):
             for j in range(j_min, j_max + 1):
-                # Calculate distance from this cell to marker
-                cell_distance = math.sqrt((i - marker_grid_x)**2 + (j - marker_grid_y)**2)
-                
-                # Only consider cells within the observed distance (with some tolerance)
-                if abs(cell_distance - distance_cells) <= 1.0:  # 1 cell tolerance
-                    total_cells += 1
-                    grid_probabilities.append((i, j, 1.0))  # Equal probability for now
-        
-        # Normalize probabilities
-        if total_cells > 0:
-            normalized_prob = 1.0 / total_cells
-            for i in range(len(grid_probabilities)):
-                row, col, _ = grid_probabilities[i]
-                grid_probabilities[i] = (row, col, normalized_prob)
-        
-        # Create and publish Polygon message
-        polygon_msg = Polygon()
-        
-        for row, col, prob in grid_probabilities:
-            point = Point32()
-            point.x = float(row)
-            point.y = float(col)
-            point.z = float(prob)
-            polygon_msg.points.append(point)
-        
-        # Publish the probabilities
-        self.grid_prob_pub.publish(polygon_msg)
-        
-        rospy.loginfo(f"Published {len(grid_probabilities)} cell probabilities for marker {observed_marker_id}")
-        rospy.loginfo(f"Marker at grid ({marker_grid_x}, {marker_grid_y}), distance: {distance_cells} cells, orientation: {marker_orientation}")
+                cell_box = box(i, j, i+1, j+1)
+                intersection = cell_box.intersection(sector)
+                intersection_area = intersection.area if not intersection.is_empty else 0
+                probability = intersection_area / total_sector_area
+                probability_map[i, j] = probability
+        else:
+            rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database.")
+        return probability_map
 
-
-    # def compute_robot_pose(self, observed_marker_id):
-    #     """
-    #     Compute robot's global pose using marker observation
+    def compute_robot_pose(self, observed_marker_id):
+        """
+        Compute robot's global pose using marker observation
         
     #     Theory:
     #     - We know marker's position and orientation in world coordinates: (x_m, y_m, θ_m)
