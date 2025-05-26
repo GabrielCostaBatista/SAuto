@@ -12,7 +12,7 @@ def main():
     rospy.init_node('qmdp_controller')
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
-    CELL_SIZE     = 0.25      # m per cell
+    CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
     LINEAR_SPEED  = 0.2       # m/s
     ANGULAR_SPEED = math.pi/2 # rad/s for 90°
     CELL_TIME     = CELL_SIZE / LINEAR_SPEED
@@ -45,8 +45,8 @@ def main():
     pose_array.header.frame_id = "map"
     for r, c, ori in checkpoints:
         pose = PoseStamped().pose
-        pose.position.x = c * CELL_SIZE + marker_orientation_dictionary[ori][0]
-        pose.position.y = r * CELL_SIZE + marker_orientation_dictionary[ori][1]
+        pose.position.x = c + marker_orientation_dictionary[ori][0]
+        pose.position.y = r + marker_orientation_dictionary[ori][1]
         pose.position.z = ori
         pose.orientation.w = 1.0
         pose_array.poses.append(pose)

@@ -10,6 +10,9 @@ NUM_PROTECTED_MARKERS = rospy.get_param('~num_protected_markers', 2)
 # Protected markers id list (can be overridden via ROS parameter in launch file)
 PROTECTED_MARKERS = rospy.get_param('~protected_markers', [0, 1])
 
+# Get cell size from ROS parameter (default 0.25 meters)
+CELL_SIZE = rospy.get_param('~cell_size', 0.25)  # meters per cell
+
 class RobotLocalizer:
     def __init__(self):
         rospy.init_node('robot_global_pose_publisher', anonymous=True)
@@ -19,7 +22,6 @@ class RobotLocalizer:
         
         # Data storage
         self.global_markers = {}  # marker_id -> (x, y, orientation) in world coordinates
-        self.robot_observations = {}  # marker_id -> (x, y) in robot frame
         self.protected_marker_positions = {}  # marker_id -> (x, y) for protected markers
         
         # Initialize protected marker positions (you can modify these as needed)
@@ -68,11 +70,8 @@ class RobotLocalizer:
                 rospy.logwarn(f"Invalid frame_id format: {msg.header.frame_id}")
                 return
 
-            # Store robot's observation of this marker
-            self.robot_observations[marker_id] = (msg.pose.position.x, msg.pose.position.y, msg.pose.position.z)
-
             # Compute robot pose based on this marker observation
-            self.compute_robot_pose(marker_id)
+            self.grid_probabilities(marker_id, math.sqrt((msg.pose.position.x/CELL_SIZE)**2 + (msg.pose.position.z/CELL_SIZE)**2))
 
         except (ValueError, IndexError) as e:
             rospy.logerr(f"Error parsing marker ID: {e}")
@@ -97,6 +96,50 @@ class RobotLocalizer:
             'w': math.cos(yaw / 2.0)
         }
     
+    def grid_probabilities(self, observed_marker_id, distance):
+        """
+        Compute robot pose based on observed marker ID and distance
+
+        Output:
+        List of tuples containing:
+        - Cell coordinates (row, column)
+        - Probability of being in that cell
+        """
+        # Check if marker is in global markers and is not a protected marker
+        if observed_marker_id in self.global_markers:
+            global_marker_pos = self.global_markers[observed_marker_id]
+
+            # Get robot's observation of this marker
+            if observed_marker_id not in self.robot_observations:
+                rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
+                return
+
+            i_min = global_marker_pos[0] - distance
+            i_max = global_marker_pos[0] + distance
+            j_min = global_marker_pos[1] - distance
+            j_max = global_marker_pos[1] + distance
+
+            if global_marker_pos[2] == 0:
+                i_max = global_marker_pos[0]
+            elif global_marker_pos[2] == 1:
+                j_min = global_marker_pos[1]
+            elif global_marker_pos[2] == 2:
+                i_min = global_marker_pos[0]
+            elif global_marker_pos[2] == 3:
+                j_max = global_marker_pos[1]
+
+            intersections_i = []
+            intersections_j = []
+
+            for i in range(i_min, i_max + 1):
+                
+
+            for j in range(j_min, j_max + 1):
+
+
+        else:
+            rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database.")
+            return
 
     def compute_robot_pose(self, observed_marker_id):
         """
