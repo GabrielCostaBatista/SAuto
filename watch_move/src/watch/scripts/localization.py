@@ -150,6 +150,7 @@ class RobotLocalizer:
             if observed_marker_id not in self.robot_observations:
                 rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
                 return
+
             i_min = global_marker_pos[0] - distance
             i_max = global_marker_pos[0] + distance
             j_min = global_marker_pos[1] - distance
@@ -163,10 +164,12 @@ class RobotLocalizer:
                 i_min = global_marker_pos[0]
             elif global_marker_pos[2] == 3:
                 j_max = global_marker_pos[1] 
+
         distance = np.mean(distances)
         distance_error = np.std([first[0] for first in distances]) * RADIUS_N_STD_DEV
-        sector = annular_sector(center=(global_marke[:][1]r_pos[0], global_marker_pos[1]), r_inner=distance, r_outer=distance + 0.1, angle_start=0, angle_end=180)
+        sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner=distance - distance_error, r_outer=distance + distance_error, angle_start=0, angle_end=180)
         total_sector_area = sector.area if sector.area > 0 else 1  # avoid zero division
+        
         for i in range(i_min, i_max + 1):
             for j in range(j_min, j_max + 1):
                 cell_box = box(i, j, i+1, j+1)
@@ -174,8 +177,10 @@ class RobotLocalizer:
                 intersection_area = intersection.area if not intersection.is_empty else 0
                 probability = intersection_area / total_sector_area
                 probability_map[i, j] = probability
+       
         else:
             rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database.")
+
         return probability_map
 
     def compute_robot_pose(self, observed_marker_id):
