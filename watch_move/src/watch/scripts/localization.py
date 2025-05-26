@@ -2,7 +2,8 @@
 import rospy
 import numpy as np
 import math
-from geometry_msgs.msg import PoseStamped, PoseArray
+from geometry_msgs.msg import PoseStamped, PoseArray, Polygon, Point32
+from std_msgs.msg import Header
 
 # Number of protected markers (can be overridden via ROS parameter in launch file)
 NUM_PROTECTED_MARKERS = rospy.get_param('~num_protected_markers', 2)
@@ -13,16 +14,24 @@ PROTECTED_MARKERS = rospy.get_param('~protected_markers', [0, 1])
 # Get cell size from ROS parameter (default 0.25 meters)
 CELL_SIZE = rospy.get_param('~cell_size', 0.25)  # meters per cell
 
+# Get number of frames to average from ROS parameter (default 10)
+NUM_FRAMES_TO_AVERAGE = rospy.get_param('~num_frames_to_average', 10)
+
+# Initialize distances list for averaging
+distances = {}
+
+
 class RobotLocalizer:
     def __init__(self):
-        rospy.init_node('robot_global_pose_publisher', anonymous=True)
+        rospy.init_node('grid_probabilities_publisher', anonymous=True)
         
         # Publishers
-        self.robot_pose_pub = rospy.Publisher('global_locations/robot_pose', PoseStamped, queue_size=10)
+        self.grid_prob_pub = rospy.Publisher('global_locations/grid_probabilities', Polygon, queue_size=10)
         
         # Data storage
         self.global_markers = {}  # marker_id -> (x, y, orientation) in world coordinates
         self.protected_marker_positions = {}  # marker_id -> (x, y) for protected markers
+        # self.robot_observations = {}  # marker_id -> (x, y, z) robot's observation of marker
         
         # Initialize protected marker positions (you can modify these as needed)
         # For now, setting some default positions - you should update these with actual positions
@@ -70,8 +79,27 @@ class RobotLocalizer:
                 rospy.logwarn(f"Invalid frame_id format: {msg.header.frame_id}")
                 return
 
-            # Compute robot pose based on this marker observation
-            self.grid_probabilities(marker_id, math.sqrt((msg.pose.position.x/CELL_SIZE)**2 + (msg.pose.position.z/CELL_SIZE)**2))
+            # Store robot's observation of this marker
+            # self.robot_observations[marker_id] = (
+            #     msg.pose.position.x,
+            #     msg.pose.position.y, 
+            #     msg.pose.position.z
+            # )
+            timestamp = msg.header.stamp
+
+            # Compute distance for grid probabilities
+            distance = math.sqrt((msg.pose.position.x/CELL_SIZE)**2 + (msg.pose.position.z/CELL_SIZE)**2)
+
+            if timestamp - distances[-1][1] > rospy.Duration(1.0):
+                # Reset distances if last timestamp is too old
+                distances[marker_id] = []
+            
+            distances[marker_id].append([distance, timestamp])
+
+            if len(distances[marker_id]) == NUM_FRAMES_TO_AVERAGE:
+                # Compute grid probabilities based on this marker observation
+                self.grid_probabilities(marker_id)
+                distances[marker_id].clear()  # Reset distances after processing
 
         except (ValueError, IndexError) as e:
             rospy.logerr(f"Error parsing marker ID: {e}")
@@ -96,125 +124,161 @@ class RobotLocalizer:
             'w': math.cos(yaw / 2.0)
         }
     
-    def grid_probabilities(self, observed_marker_id, distance):
+    
+    def grid_probabilities(self, observed_marker_id, distance_std_dev=0.025):
         """
         Compute robot pose based on observed marker ID and distance
-
+        
+        Args:
+            observed_marker_id: ID of the observed marker
+            distance_std_dev: Distance standard deviation to the marker in cells
+        
         Output:
-        List of tuples containing:
-        - Cell coordinates (row, column)
-        - Probability of being in that cell
+        Publishes a Polygon message where each Point32 contains:
+        - x: row coordinate
+        - y: column coordinate  
+        - z: probability of being in that cell
         """
         # Check if marker is in global markers and is not a protected marker
-        if observed_marker_id in self.global_markers:
-            global_marker_pos = self.global_markers[observed_marker_id]
-
-            # Get robot's observation of this marker
-            if observed_marker_id not in self.robot_observations:
-                rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
-                return
-
-            i_min = global_marker_pos[0] - distance
-            i_max = global_marker_pos[0] + distance
-            j_min = global_marker_pos[1] - distance
-            j_max = global_marker_pos[1] + distance
-
-            if global_marker_pos[2] == 0:
-                i_max = global_marker_pos[0]
-            elif global_marker_pos[2] == 1:
-                j_min = global_marker_pos[1]
-            elif global_marker_pos[2] == 2:
-                i_min = global_marker_pos[0]
-            elif global_marker_pos[2] == 3:
-                j_max = global_marker_pos[1]
-
-            intersections_i = []
-            intersections_j = []
-
-            for i in range(i_min, i_max + 1):
-                
-
-            for j in range(j_min, j_max + 1):
-
-
-        else:
+        if observed_marker_id not in self.global_markers:
             rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database.")
             return
 
-    def compute_robot_pose(self, observed_marker_id):
-        """
-        Compute robot's global pose using marker observation
+        global_marker_pos = self.global_markers[observed_marker_id]
+        marker_x, marker_y, marker_orientation = global_marker_pos
         
-        Theory:
-        - We know marker's position and orientation in world coordinates: (x_m, y_m, θ_m)
-        - We observe marker's position relative to robot: (x_r, y_r) - no orientation
-        - We need to estimate robot's pose in world coordinates
+        # Convert marker position from world coordinates to grid coordinates
+        marker_grid_x = int(marker_x / CELL_SIZE)
+        marker_grid_y = int(marker_y / CELL_SIZE)
         
-        The marker's orientation tells us which direction the marker is facing in the world.
-        The robot's observation tells us where the marker appears relative to the robot.
-        We can use this to estimate both the robot's position and orientation.
-        """
-        # Check if we have global position for this marker
-        if observed_marker_id in self.global_markers:
-            global_marker_pos = self.global_markers[observed_marker_id]
+        # Convert distance from world units to grid cells
+        distance_cells = int(distance)
+        
+        # Initial search bounds (circular area around marker)
+        i_min = marker_grid_x - distance_cells
+        i_max = marker_grid_x + distance_cells
+        j_min = marker_grid_y - distance_cells
+        j_max = marker_grid_y + distance_cells
+        
+        # Constrain search area based on marker orientation
+        # Orientation: 0=right, 1=top, 2=left, 3=bottom
+        if marker_orientation == 0:      # Marker faces right, robot is to the left
+            i_max = marker_grid_x
+        elif marker_orientation == 1:    # Marker faces up, robot is below
+            j_min = marker_grid_y
+        elif marker_orientation == 2:    # Marker faces left, robot is to the right
+            i_min = marker_grid_x
+        elif marker_orientation == 3:    # Marker faces down, robot is above
+            j_max = marker_grid_y
+        
+        # Calculate probabilities for cells within the constrained area
+        grid_probabilities = []
+        total_cells = 0
+        
+        for i in range(i_min, i_max + 1):
+            for j in range(j_min, j_max + 1):
+                # Calculate distance from this cell to marker
+                cell_distance = math.sqrt((i - marker_grid_x)**2 + (j - marker_grid_y)**2)
+                
+                # Only consider cells within the observed distance (with some tolerance)
+                if abs(cell_distance - distance_cells) <= 1.0:  # 1 cell tolerance
+                    total_cells += 1
+                    grid_probabilities.append((i, j, 1.0))  # Equal probability for now
+        
+        # Normalize probabilities
+        if total_cells > 0:
+            normalized_prob = 1.0 / total_cells
+            for i in range(len(grid_probabilities)):
+                row, col, _ = grid_probabilities[i]
+                grid_probabilities[i] = (row, col, normalized_prob)
+        
+        # Create and publish Polygon message
+        polygon_msg = Polygon()
+        
+        for row, col, prob in grid_probabilities:
+            point = Point32()
+            point.x = float(row)
+            point.y = float(col)
+            point.z = float(prob)
+            polygon_msg.points.append(point)
+        
+        # Publish the probabilities
+        self.grid_prob_pub.publish(polygon_msg)
+        
+        rospy.loginfo(f"Published {len(grid_probabilities)} cell probabilities for marker {observed_marker_id}")
+        rospy.loginfo(f"Marker at grid ({marker_grid_x}, {marker_grid_y}), distance: {distance_cells} cells, orientation: {marker_orientation}")
 
-            # Get robot's observation of this marker
-            if observed_marker_id not in self.robot_observations:
-                rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
-                return
-            
-            robot_observation = self.robot_observations[observed_marker_id]
-            
-            # Extract marker data
-            marker_world_x, marker_world_y, marker_world_orientation = global_marker_pos
-            robot_x, robot_y, robot_z = robot_observation
 
-            # Compute robot orientation in world frame
-            robot_world_yaw = self.discrete_orientation_to_yaw(marker_world_orientation) - math.atan2(robot_x, robot_z) # Adjusting for observation angle (minus because x is positive to the right)
-            
-            # Compute robot position in world frame
-            # Transform the robot's observation vector to world coordinates using estimated robot orientation
-            cos_robot_yaw = math.cos(robot_world_yaw)
-            sin_robot_yaw = math.sin(robot_world_yaw)
+    # def compute_robot_pose(self, observed_marker_id):
+    #     """
+    #     Compute robot's global pose using marker observation
+        
+    #     Theory:
+    #     - We know marker's position and orientation in world coordinates: (x_m, y_m, θ_m)
+    #     - We observe marker's position relative to robot: (x_r, y_r) - no orientation
+    #     - We need to estimate robot's pose in world coordinates
+        
+    #     The marker's orientation tells us which direction the marker is facing in the world.
+    #     The robot's observation tells us where the marker appears relative to the robot.
+    #     We can use this to estimate both the robot's position and orientation.
+    #     """
+    #     # Check if we have global position for this marker
+    #     if observed_marker_id in self.global_markers:
+    #         global_marker_pos = self.global_markers[observed_marker_id]
 
-            # Robot's position in world coordinates
-            world_robot_x = marker_world_x - robot_z * cos_robot_yaw + robot_x * sin_robot_yaw
-            world_robot_y = marker_world_y - robot_z * sin_robot_yaw - robot_x * cos_robot_yaw
-            world_robot_z = 0.0  # Assuming robot moves on ground plane
+    #         # Get robot's observation of this marker
+    #         if observed_marker_id not in self.robot_observations:
+    #             rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
+    #             return
             
-            # Convert robot yaw to quaternion
-            quat = self.yaw_to_quaternion(robot_world_yaw)
+    #         robot_observation = self.robot_observations[observed_marker_id]
             
-            # Update robot pose
-            self.robot_pose.header.stamp = rospy.Time.now()
-            self.robot_pose.pose.position.x = world_robot_x
-            self.robot_pose.pose.position.y = world_robot_y
-            self.robot_pose.pose.position.z = world_robot_z
-            
-            # Set orientation quaternion
-            self.robot_pose.pose.orientation.x = quat['x']
-            self.robot_pose.pose.orientation.y = quat['y']
-            self.robot_pose.pose.orientation.z = quat['z']
-            self.robot_pose.pose.orientation.w = quat['w']
-            
-            rospy.loginfo(f"Robot localized using marker {observed_marker_id}: "
-                        f"position=({world_robot_x:.3f}, {world_robot_y:.3f}, {world_robot_z:.3f}), "
-                        f"yaw={math.degrees(robot_world_yaw):.1f}°")
+    #         # Extract marker data
+    #         marker_world_x, marker_world_y, marker_world_orientation = global_marker_pos
+    #         robot_x, robot_y, robot_z = robot_observation
 
-        elif observed_marker_id in self.protected_marker_positions:
-            rospy.loginfo(f"Watching protected marker with ID {observed_marker_id}")
-        else:
-            rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database or protected markers.")
-            return
+    #         # Compute robot orientation in world frame
+    #         robot_world_yaw = self.discrete_orientation_to_yaw(marker_world_orientation) - math.atan2(robot_x, robot_z) # Adjusting for observation angle (minus because x is positive to the right)
+            
+    #         # Compute robot position in world frame
+    #         # Transform the robot's observation vector to world coordinates using estimated robot orientation
+    #         cos_robot_yaw = math.cos(robot_world_yaw)
+    #         sin_robot_yaw = math.sin(robot_world_yaw)
+
+    #         # Robot's position in world coordinates
+    #         world_robot_x = marker_world_x - robot_z * cos_robot_yaw + robot_x * sin_robot_yaw
+    #         world_robot_y = marker_world_y - robot_z * sin_robot_yaw - robot_x * cos_robot_yaw
+    #         world_robot_z = 0.0  # Assuming robot moves on ground plane
+            
+    #         # Convert robot yaw to quaternion
+    #         quat = self.yaw_to_quaternion(robot_world_yaw)
+            
+    #         # Update robot pose
+    #         self.robot_pose.header.stamp = rospy.Time.now()
+    #         self.robot_pose.pose.position.x = world_robot_x
+    #         self.robot_pose.pose.position.y = world_robot_y
+    #         self.robot_pose.pose.position.z = world_robot_z
+            
+    #         # Set orientation quaternion
+    #         self.robot_pose.pose.orientation.x = quat['x']
+    #         self.robot_pose.pose.orientation.y = quat['y']
+    #         self.robot_pose.pose.orientation.z = quat['z']
+    #         self.robot_pose.pose.orientation.w = quat['w']
+            
+    #         rospy.loginfo(f"Robot localized using marker {observed_marker_id}: "
+    #                     f"position=({world_robot_x:.3f}, {world_robot_y:.3f}, {world_robot_z:.3f}), "
+    #                     f"yaw={math.degrees(robot_world_yaw):.1f}°")
+
+    #     elif observed_marker_id in self.protected_marker_positions:
+    #         rospy.loginfo(f"Watching protected marker with ID {observed_marker_id}")
+    #     else:
+    #         rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database or protected markers.")
+    #         return
     
     def run(self):
-        """Main loop to publish robot pose"""
-        rate = rospy.Rate(10)  # 10 Hz
-        
-        while not rospy.is_shutdown():
-            # Publish current robot pose estimate
-            self.robot_pose_pub.publish(self.robot_pose)
-            rate.sleep()
+        """Main loop - grid probabilities are published in real-time via callbacks"""
+        rospy.loginfo("Grid probabilities publisher is running. Probabilities published on marker detection.")
+        rospy.spin()  # Keep node alive to process callbacks
 
 
 if __name__ == '__main__':
