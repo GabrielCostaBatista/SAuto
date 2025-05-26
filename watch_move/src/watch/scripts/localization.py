@@ -3,6 +3,7 @@ import rospy
 import numpy as np
 import math
 from geometry_msgs.msg import PoseStamped, PoseArray
+from shapely.geometry import box
 
 # Number of protected markers (can be overridden via ROS parameter in launch file)
 NUM_PROTECTED_MARKERS = rospy.get_param('~num_protected_markers', 2)
@@ -12,6 +13,8 @@ PROTECTED_MARKERS = rospy.get_param('~protected_markers', [0, 1])
 
 # Get cell size from ROS parameter (default 0.25 meters)
 CELL_SIZE = rospy.get_param('~cell_size', 0.25)  # meters per cell
+
+RADIUS_N_STD_DEV = rospy.get_param('~radius_n_std_dev', 2)
 
 class RobotLocalizer:
     def __init__(self):
@@ -113,7 +116,6 @@ class RobotLocalizer:
             if observed_marker_id not in self.robot_observations:
                 rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
                 return
-
             i_min = global_marker_pos[0] - distance
             i_max = global_marker_pos[0] + distance
             j_min = global_marker_pos[1] - distance
@@ -126,20 +128,21 @@ class RobotLocalizer:
             elif global_marker_pos[2] == 2:
                 i_min = global_marker_pos[0]
             elif global_marker_pos[2] == 3:
-                j_max = global_marker_pos[1]
-
-            intersections_i = []
-            intersections_j = []
-
-            for i in range(i_min, i_max + 1):
-                
-
+                j_max = global_marker_pos[1] 
+        distance = np.mean(distances)
+        distance_error = np.std([first[0] for first in distances]) * RADIUS_N_STD_DEV
+        sector = annular_sector(center=(global_marke[:][1]r_pos[0], global_marker_pos[1]), r_inner=distance, r_outer=distance + 0.1, angle_start=0, angle_end=180)
+        total_sector_area = sector.area if sector.area > 0 else 1  # avoid zero division
+        for i in range(i_min, i_max + 1):
             for j in range(j_min, j_max + 1):
-
-
+                cell_box = box(i, j, i+1, j+1)
+                intersection = cell_box.intersection(sector)
+                intersection_area = intersection.area if not intersection.is_empty else 0
+                probability = intersection_area / total_sector_area
+                probability_map[i, j] = probability
         else:
             rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database.")
-            return
+        return probability_map
 
     def compute_robot_pose(self, observed_marker_id):
         """
