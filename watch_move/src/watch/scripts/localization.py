@@ -169,6 +169,10 @@ class RobotLocalizer:
         distance_error = np.std([first[0] for first in distances]) * RADIUS_N_STD_DEV
         sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner=distance - distance_error, r_outer=distance + distance_error, angle_start=0, angle_end=180)
         total_sector_area = sector.area if sector.area > 0 else 1  # avoid zero division
+
+        # Create Polygon message to publish probabilities
+        probability_map = Polygon()
+        probability_map.header = Header()
         
         for i in range(i_min, i_max + 1):
             for j in range(j_min, j_max + 1):
@@ -177,11 +181,19 @@ class RobotLocalizer:
                 intersection_area = intersection.area if not intersection.is_empty else 0
                 probability = intersection_area / total_sector_area
                 probability_map[i, j] = probability
-       
+                if probability > 0:  # Only add points with non-zero probability
+                    point = Point32()
+                    point.x = i
+                    point.y = j
+                    point.z = probability
+                    probability_map.polygon.points.append(point)
+
+        self.grid_prob_pub.publish(probability_map)
+
         else:
             rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database.")
-
-        return probability_map
+        
+        return
 
     def compute_robot_pose(self, observed_marker_id):
         """
