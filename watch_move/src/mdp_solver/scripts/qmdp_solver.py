@@ -9,6 +9,7 @@ import numpy as np
 
 def main():
     rospy.init_node('qmdp_controller')
+
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
     CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
@@ -164,14 +165,18 @@ def main():
                       controller.get_believed_position(), waypoint)
         rospy.loginfo("Executing action = %s", a)
 
-        a_idx = controller.mdp.actions.index(a)
-        coord = send_action(a_idx)
+        
         
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
             idx = maze.coord_to_state(coord)
-            controller.relocalise(idx)
-            rospy.loginfo("Checkpoint at %s: belief collapsed", coord)
+            update_grid_probabilities
+            controller.relocalise(new_belief_updater)
+            a_idx = controller.mdp.actions.index(a)
+            coord = send_action(a_idx)
+            believed_position = controller.get_believed_position()
+            rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
+            believed_path.append(believed_position)
             waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
@@ -180,8 +185,11 @@ def main():
             continue
 
         # otherwise predict belief forward
-        controller.predict_belief(a_idx)
-        believed_path.append(controller.get_believed_position())
+        else:
+            a_idx = controller.mdp.actions.index(a)
+            coord = send_action(a_idx)
+            controller.predict_belief(a_idx)
+            believed_path.append(controller.get_believed_position())
 
         # stop if goal reached
         if check_goal(coord):
