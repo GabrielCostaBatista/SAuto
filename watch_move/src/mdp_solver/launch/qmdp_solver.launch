@@ -1,5 +1,11 @@
 <launch>
     <include file="$(find watch)/launch/watch.launch"/>
-    <node pkg="mdp_solver" type="qmdp_solver.py" name="qmdp_solver" output="screen"/>
+    <node pkg="mdp_solver" type="qmdp_solver.py" name="qmdp_solver" output="screen">
+        <param name="cell_size" type="double" value="0.25"/>
+    </node>
     <node pkg="watch" type="localization.py" name="localization" output="screen"/>
+        <param name="cell_size" type="double" value="0.25"/>
+        <param name="num_frames_to_average" type="int" value="10"/>
+        <param name="radius_n_std_dev" type="double" value="2.0"/>
+    </node>
 </launch>
