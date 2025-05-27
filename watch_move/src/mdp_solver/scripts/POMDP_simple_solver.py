@@ -20,9 +20,9 @@ class Maze:
                     self._idx_map[(i, j)] = idx
                     self._rev_map[idx] = (i, j)
                     idx += 1
-        self.n_states = idx
-        self.start_idx = self._idx_map[self.start]
-        self.goal_idx = self._idx_map[self.goal]
+        self.n_states       = idx
+        self.start_idx      = self._idx_map[self.start]
+        self.goal_idx       = self._idx_map[self.goal]
         self.checkpoint_idxs = [self._idx_map[c] for c in self.checkpoints]
 
     def state_to_coord(self, s):
@@ -30,20 +30,63 @@ class Maze:
 
     def coord_to_state(self, coord):
         return self._idx_map[tuple(coord)]
-    
-    def coord_to_state(self, coord):
-        return self._idx_map[tuple(coord)]
 
     def neighbors(self, coord):
         """
-        Yields adjacent free-cell coordinates (up, down, left, right) from a given (row, col).
+        Yields adjacent free-cell coordinates (up/down/left/right).
         """
         i, j = coord
         for di, dj in [(-1,0), (1,0), (0,-1), (0,1)]:
             ni, nj = i + di, j + dj
-            if 0 <= ni < self.grid.shape[0] and 0 <= nj < self.grid.shape[1] and self.grid[ni, nj] == 0:
+            if (0 <= ni < self.grid.shape[0] and
+                0 <= nj < self.grid.shape[1] and
+                self.grid[ni, nj] == 0):
                 yield (ni, nj)
-        
+
+    def shortest_path(self, start, goal):
+        """
+        BFS to find the shortest path of coords from start→goal.
+        Uses only numpy and Python lists (no deque).
+        Returns list of (r,c). Empty if no path.
+        """
+        # frontier holds coords to explore
+        frontier = [start]
+        # map each visited coord to its predecessor
+        prev = {start: None}
+
+        while frontier:
+            u = frontier.pop(0)   # pop from head
+            if u == goal:
+                break
+            for v in self.neighbors(u):
+                if v not in prev:
+                    prev[v] = u
+                    frontier.append(v)
+
+        if goal not in prev:
+            return []  # no path found
+
+        # reconstruct path by walking backwards
+        path = []
+        node = goal
+        while node is not None:
+            path.append(node)
+            node = prev[node]
+        return path[::-1]
+
+    def coords_to_actions(self, path):
+        """
+        Convert a coord path [(r0,c0),(r1,c1),...] to actions ['up',...].
+        """
+        acts = []
+        for (r0,c0),(r1,c1) in zip(path, path[1:]):
+            dr, dc = r1-r0, c1-c0
+            if   (dr,dc)==(-1,0): acts.append('up')
+            elif (dr,dc)==( 1,0): acts.append('down')
+            elif (dr,dc)==( 0,1): acts.append('right')
+            elif (dr,dc)==( 0,-1):acts.append('left')
+        return acts
+
     def __repr__(self):
         return f"Maze(start={self.start}, goal={self.goal}, checkpoints={self.checkpoints})"
 
@@ -53,14 +96,14 @@ class MDP:
     Modified so that bumping into a wall redistributes motion to valid neighbors.
     """
     def __init__(self, maze, slip_prob=0.1, step_cost=-1, goal_reward=100, gamma=0.95):
-        self.maze = maze
-        self.n = maze.n_states
-        self.actions = ['up','down','left','right']
-        self.slip = slip_prob
-        self.gamma = gamma
-        self.step_cost = step_cost
+        self.maze        = maze
+        self.n           = maze.n_states
+        self.actions     = ['up','down','left','right']
+        self.slip        = slip_prob
+        self.gamma       = gamma
+        self.step_cost   = step_cost
         self.goal_reward = goal_reward
-        # Transition and Reward
+
         self.P = np.zeros((self.n, len(self.actions), self.n))
         self.R = np.full((self.n, len(self.actions), self.n), self.step_cost)
 
@@ -82,15 +125,15 @@ class MDP:
                         if sp == maze.goal_idx:
                             self.R[s,a_idx,sp] = self.goal_reward
                     else:
-                        # redistributive bump: spread to free neighbors
+                        # redistribute to free neighbors if bump into wall
                         if free_neigh:
                             for nbr in free_neigh:
                                 spn = maze.coord_to_state(nbr)
-                                self.P[s,a_idx,spn] += prob / len(free_neigh)
+                                self.P[s,a_idx,spn] += prob/len(free_neigh)
                                 if spn == maze.goal_idx:
                                     self.R[s,a_idx,spn] = self.goal_reward
                         else:
-                            # trapped: stay
+                            # trapped: stay put
                             self.P[s,a_idx,s] += prob
 
         self.V = np.zeros(self.n)
@@ -103,13 +146,15 @@ class MDP:
                 if s == self.maze.goal_idx:
                     continue
                 q_vals = np.sum(self.P[s] * (self.R[s] + self.gamma * self.V), axis=1)
-                max_q = np.max(q_vals)
-                delta = max(delta, abs(max_q - self.V[s]))
+                max_q  = np.max(q_vals)
+                delta  = max(delta, abs(max_q - self.V[s]))
                 self.V[s] = max_q
             if delta < eps:
                 break
         for s in range(self.n):
             self.Q[s] = np.sum(self.P[s] * (self.R[s] + self.gamma * self.V), axis=1)
+
+
 
 class QMDPController:
     """
@@ -133,9 +178,8 @@ class QMDPController:
         b_pred = self.belief @ self.mdp.P[:,action_idx,:]
         self.belief = b_pred / b_pred.sum()
 
-    def relocalise(self, state_idx):
-        b = np.zeros(self.mdp.n)
-        b[state_idx] = 1.0
+    def relocalise(self, marker_matrix): 
+        b =  marker_matrix @ self.belief
         self.belief = b
 
     def select_action(self):
@@ -146,32 +190,14 @@ class QMDPController:
             dists = [abs(ci[0]-y)+abs(ci[1]-x) for y,x in cps]
             target = cps[int(np.argmin(dists))]
             dy, dx = target[0]-ci[0], target[1]-ci[1]
-            if abs(dy)>abs(dx): action = 'down' if dy>0 else 'up'
-            else: action = 'right' if dx>0 else 'left'
+            if abs(dy)>abs(dx):
+                action = 'down' if dy>0 else 'up'
+            else:
+                action = 'right' if dx>0 else 'left'
             return self.mdp.actions.index(action)
         exp_q = self.belief @ self.mdp.Q
         return int(np.argmax(exp_q))
 
-    def control_loop(self, send_action, check_goal, detect_checkpoint, max_steps=200):
-        self.init_belief()
-        state = self.mdp.maze.start_idx
-        true_path = [self.mdp.maze.state_to_coord(state)]
-        believed_path = [self.mdp.maze.state_to_coord(int(np.argmax(self.belief)))]
-        for _ in range(max_steps):
-            a = self.select_action()
-            coord = send_action(a)
-            s_idx = self.mdp.maze.coord_to_state(coord)
-            if detect_checkpoint(coord): self.relocalise(s_idx)
-            else: self.predict_belief(a)
-            true_path.append(coord)
-            b_coord = self.mdp.maze.state_to_coord(int(np.argmax(self.belief)))
-            believed_path.append(b_coord)
-            if check_goal(coord): break
-        return true_path, believed_path
-    
     def get_believed_position(self):
-        """
-        Returns the (row, col) coordinate the robot currently believes it is in.
-        """
         idx = int(np.argmax(self.belief))
         return self.mdp.maze.state_to_coord(idx)
