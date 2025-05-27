@@ -17,7 +17,7 @@ def shutdown(signum=None, frame=None):
     sys.exit(0)
 
 def send_action(a_idx):
-    nonlocal heading
+    global heading
     action = controller.mdp.actions[a_idx]
 
     # 1) rotate to desired heading
