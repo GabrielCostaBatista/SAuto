@@ -8,22 +8,23 @@ from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
 def main():
-    # ——— ROS & robot setup —————————————————————————————————————
     rospy.init_node('qmdp_controller')
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
-    CELL_SIZE     = 0.25      # m per cell
-    LINEAR_SPEED  = 0.2       # m/s
-    ANGULAR_SPEED = math.pi/2 # rad/s for 90°
+    # Kinematics
+    CELL_SIZE     = 0.25     # m per grid cell
+    LINEAR_SPEED  = 0.2      # m/s
+    ANGULAR_SPEED = math.pi/2
     CELL_TIME     = CELL_SIZE / LINEAR_SPEED
-    TURN_TIME_90  = (math.pi/4) / ANGULAR_SPEED
-    MOTOR_PWM     = 10        # wheel PWM (0–100%)
+    TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
+    MOTOR_PWM     = 10       # wheel PWM
 
-    Ab = AlphaBot()
+    # Hardware
+    Ab  = AlphaBot()
     pwm = PCA9685(0x40)
     pwm.setPWMFreq(50)
 
-    # ——— Maze + policy ————————————————————————————————————————
+    # Maze and checkpoints
     grid = [
         [0,0,0,1,0],
         [1,1,0,1,0],
@@ -34,42 +35,37 @@ def main():
     start, goal = (0,0), (4,0)
     checkpoints = [(0,0,0), (1,4,1), (3,4,2), (4,2,3)]
 
-    marker_orientation_dictionary = {
-        0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)
-    }
-
-    # Publish checkpoint poses
-    marker_pub = rospy.Publisher(
-        'global_locations/marker_pose', PoseArray, queue_size=10
-    )
+    # Publish marker poses for external localisation
+    marker_pub = rospy.Publisher('global_locations/marker_pose',
+                                 PoseArray, queue_size=10)
     pose_array = PoseArray()
-    pose_array.header.stamp = rospy.Time.now()
+    pose_array.header.stamp    = rospy.Time.now()
     pose_array.header.frame_id = "map"
-    for r, c, ori in checkpoints:
+    ori_offsets = {0:(1,0.5),1:(0.5,0),2:(0,0.5),3:(0.5,1)}
+    for r,c,ori in checkpoints:
         pose = PoseStamped().pose
-        pose.position.x = c * CELL_SIZE + marker_orientation_dictionary[ori][0]
-        pose.position.y = r * CELL_SIZE + marker_orientation_dictionary[ori][1]
+        pose.position.x = c*CELL_SIZE + ori_offsets[ori][0]
+        pose.position.y = r*CELL_SIZE + ori_offsets[ori][1]
         pose.position.z = ori
         pose.orientation.w = 1.0
         pose_array.poses.append(pose)
-
-    # Wait for subscribers then publish
-    while marker_pub.get_num_connections() == 0 and not rospy.is_shutdown():
+    # wait for subscribers
+    while marker_pub.get_num_connections()==0 and not rospy.is_shutdown():
         rospy.sleep(0.1)
     marker_pub.publish(pose_array)
 
-    # Strip orientation for the solver
-    checkpoints = [tuple(cp[:2]) for cp in checkpoints]
+    # Strip orientation for solver
+    checkpoints = [cp[:2] for cp in checkpoints]
 
-    # Build solver
+    # Build MDP & controller
     maze       = Maze(grid, start, goal, checkpoints=checkpoints)
     mdp        = MDP(maze, slip_prob=0.1, step_cost=-1,
                      goal_reward=100, gamma=0.95)
     mdp.value_iteration()
     controller = QMDPController(mdp)
-    controller.init_belief()                        # ← initialise belief
+    controller.init_belief()
 
-    # ——— shutdown handler —————————————————————————————————————
+    # Shutdown handler
     settings = termios.tcgetattr(sys.stdin)
     def shutdown(signum=None, frame=None):
         rospy.loginfo('Shutting down')
@@ -81,42 +77,44 @@ def main():
     signal.signal(signal.SIGINT,  shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    # ——— state & heading —————————————————————————————————————
-    true_state = maze.start_idx
-    heading    = 0   # 0=east,1=north,2=west,3=south
+    # Track heading for correct rotations
+    heading = 0  # 0=east,1=north,2=west,3=south
 
     def send_action(a_idx):
-        nonlocal true_state, heading
+        nonlocal heading
         action = controller.mdp.actions[a_idx]
-        # compute desired heading
+
+        # 1) rotate to desired heading
         desired = {'right':0,'up':1,'left':2,'down':3}[action]
         diff = (desired - heading) % 4
-
-        # rotate
         if diff == 1:
             Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
-            Ab.left();   rospy.sleep(TURN_TIME_90); Ab.stop()
+            Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
         elif diff == 2:
             Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
-            Ab.left();   rospy.sleep(TURN_TIME_90)
-            Ab.left();   rospy.sleep(TURN_TIME_90); Ab.stop()
+            Ab.left(); rospy.sleep(TURN_TIME_90)
+            Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
         elif diff == 3:
             Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
-            Ab.right();  rospy.sleep(TURN_TIME_90); Ab.stop()
-
+            Ab.right(); rospy.sleep(TURN_TIME_90); Ab.stop()
         heading = desired
 
-        # move forward one cell
+        # 2) pause, then move forward one cell
+        rospy.sleep(1.0)
         Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
         Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
 
-        # update true_state (simulation or replace with odometry)
-        true_state = np.random.choice(
-            range(mdp.n),
-            p=mdp.P[true_state, a_idx]
-        )
+        # 3) pause before next decision
+        rospy.loginfo("Pausing for 2 s")
+        rospy.sleep(2.0)
 
-        return maze.state_to_coord(true_state)
+        # return the *actual* coordinate (for checkpoint/goal checks)
+        # here we assume perfect odometry: map heading+movement to grid:
+        #   convert believed_position + action → new coord
+        bp = controller.get_believed_position()
+        dr, dc = {'up':(-1,0),'down':(1,0),
+                  'left':(0,-1),'right':(0,1)}[action]
+        return (bp[0]+dr, bp[1]+dc)
 
     def detect_checkpoint(coord):
         return coord in maze.checkpoints
@@ -124,29 +122,53 @@ def main():
     def check_goal(coord):
         return coord == maze.goal
 
-    # ——— run until goal ————————————————————————————————————————
-    max_steps      = 200
-    true_path      = []
-    believed_path  = []
+    # ——— replannable path loop ————————————————————————————————————
+    THRESH = controller.entropy_thresh
+    believed_path = []
 
-    for step in range(max_steps):
-        a_idx = controller.select_action()
+    def pick_waypoint():
+        if controller.belief.max() < THRESH:
+            mp = controller.get_believed_position()
+            cps_sorted = sorted(
+                maze.checkpoints,
+                key=lambda x: abs(x[0]-mp[0]) + abs(x[1]-mp[1])
+            )
+            return cps_sorted[0]
+        return maze.goal
+
+    waypoint = pick_waypoint()
+    path     = maze.shortest_path(controller.get_believed_position(), waypoint)
+    actions  = maze.coords_to_actions(path)
+
+    for a in actions:
+        # log current belief and planned target
+        rospy.loginfo("Believed pos = %s → waypoint %s",
+                      controller.get_believed_position(), waypoint)
+        rospy.loginfo("Executing action = %s", a)
+
+        a_idx = controller.mdp.actions.index(a)
         coord = send_action(a_idx)
 
+        # if at a checkpoint, relocalise & replan
         if detect_checkpoint(coord):
-            controller.relocalise(maze.coord_to_state(coord))
-        else:
-            controller.predict_belief(a_idx)
+            idx = maze.coord_to_state(coord)
+            controller.relocalise(idx)
+            rospy.loginfo("Checkpoint at %s: belief collapsed", coord)
+            waypoint = pick_waypoint()
+            path     = maze.shortest_path(coord, waypoint)
+            actions  = maze.coords_to_actions(path)
+            continue
 
-        true_path.append(coord)
+        # otherwise predict belief forward
+        controller.predict_belief(a_idx)
         believed_path.append(controller.get_believed_position())
 
+        # stop if goal reached
         if check_goal(coord):
-            rospy.loginfo("Goal reached at %s in %d steps", coord, step+1)
+            rospy.loginfo("Arrived at goal %s", coord)
             break
 
-    rospy.loginfo("True path:     %s", true_path)
-    rospy.loginfo("Believed path: %s", believed_path)
+    rospy.loginfo("Final believed path: %s", believed_path)
     shutdown()
 
 if __name__ == '__main__':
