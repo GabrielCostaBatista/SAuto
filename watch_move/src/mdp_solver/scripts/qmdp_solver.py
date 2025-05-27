@@ -56,6 +56,8 @@ def main():
         rospy.sleep(0.1)
     marker_pub.publish(pose_array)
 
+    rospy.Subscriber('global_locations/grid_probabilities', Polygon, update_grid_probabilities)
+
     # Strip orientation for the solver
     checkpoints = [tuple(cp[:2]) for cp in checkpoints]
 
