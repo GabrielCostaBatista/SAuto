@@ -9,12 +9,12 @@ import numpy as np
 
 
 def shutdown(signum=None, frame=None):
-        rospy.loginfo('Shutting down')
-        Ab.stop()
-        cmd_pub.publish(Twist())
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
-        rospy.signal_shutdown('exit')
-        sys.exit(0)
+    rospy.loginfo('Shutting down')
+    Ab.stop()
+    cmd_pub.publish(Twist())
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+    rospy.signal_shutdown('exit')
+    sys.exit(0)
 
 def send_action(a_idx):
     nonlocal heading
