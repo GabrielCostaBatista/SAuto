@@ -94,8 +94,12 @@ class RobotLocalizer:
             # Compute distance for grid probabilities
             distance = math.sqrt((msg.pose.position.x/CELL_SIZE)**2 + (msg.pose.position.z/CELL_SIZE)**2)
 
-            if timestamp - distances[-1][1] > rospy.Duration(1.0):
-                # Reset distances if last timestamp is too old
+            if marker_id in distances and len(distances[marker_id]) > 0:
+                if timestamp - distances[marker_id][1] > rospy.Duration(1.0):
+                    # Reset distances if last timestamp is too old
+                    distances[marker_id] = []
+                    
+            if marker_id not in distances:
                 distances[marker_id] = []
             
             distances[marker_id].append([distance, timestamp])
