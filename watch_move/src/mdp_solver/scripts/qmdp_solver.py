@@ -7,6 +7,78 @@ from alphabot_driver.PCA9685 import PCA9685
 from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
+
+def shutdown(signum=None, frame=None):
+        rospy.loginfo('Shutting down')
+        Ab.stop()
+        cmd_pub.publish(Twist())
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+        rospy.signal_shutdown('exit')
+        sys.exit(0)
+
+def send_action(a_idx):
+    nonlocal heading
+    action = controller.mdp.actions[a_idx]
+
+    # 1) rotate to desired heading
+    desired = {'right':0,'up':1,'left':2,'down':3}[action]
+    diff = (desired - heading) % 4
+    if diff == 1:
+        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
+    elif diff == 2:
+        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.left(); rospy.sleep(TURN_TIME_90)
+        Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
+    elif diff == 3:
+        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.right(); rospy.sleep(TURN_TIME_90); Ab.stop()
+    heading = desired
+
+    # 2) pause, then move forward one cell
+    rospy.sleep(1.0)
+    Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+    Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
+
+    # 3) pause before next decision
+    rospy.loginfo("Pausing for 2 s")
+    rospy.sleep(2.0)
+
+    # return the *actual* coordinate (for checkpoint/goal checks)
+    # here we assume perfect odometry: map heading+movement to grid:
+    #   convert believed_position + action → new coord
+    bp = controller.get_believed_position()
+    dr, dc = {'up':(-1,0),'down':(1,0),
+                'left':(0,-1),'right':(0,1)}[action]
+    return (bp[0]+dr, bp[1]+dc)
+
+def detect_checkpoint(coord):
+    return coord in maze.checkpoints
+
+def check_goal(coord):
+    return coord == maze.goal
+
+def pick_waypoint():
+    if controller.belief.max() < THRESH:
+        mp = controller.get_believed_position()
+        cps_sorted = sorted(
+            maze.checkpoints,
+            key=lambda x: abs(x[0]-mp[0]) + abs(x[1]-mp[1])
+        )
+        return cps_sorted[0]
+    return maze.goal
+
+def update_grid_probabilities(grid_probabilities):
+    for idx, cell in enumerate(grid_probabilities):
+        x = cell.point.x
+        y = cell.point.y
+        probability = cell.point.z
+        new_belief_updater = np.zeros((len(grid), len(grid[0])))
+        new_belief_updater[int(x)][int(y)] = probability
+    
+    marker_exists = True
+
+
 def main():
     rospy.init_node('qmdp_controller')
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -71,74 +143,16 @@ def main():
 
     # Shutdown handler
     settings = termios.tcgetattr(sys.stdin)
-    def shutdown(signum=None, frame=None):
-        rospy.loginfo('Shutting down')
-        Ab.stop()
-        cmd_pub.publish(Twist())
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
-        rospy.signal_shutdown('exit')
-        sys.exit(0)
+    
     signal.signal(signal.SIGINT,  shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
     # Track heading for correct rotations
     heading = 0  # 0=east,1=north,2=west,3=south
 
-    def send_action(a_idx):
-        nonlocal heading
-        action = controller.mdp.actions[a_idx]
-
-        # 1) rotate to desired heading
-        desired = {'right':0,'up':1,'left':2,'down':3}[action]
-        diff = (desired - heading) % 4
-        if diff == 1:
-            Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
-            Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
-        elif diff == 2:
-            Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
-            Ab.left(); rospy.sleep(TURN_TIME_90)
-            Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
-        elif diff == 3:
-            Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
-            Ab.right(); rospy.sleep(TURN_TIME_90); Ab.stop()
-        heading = desired
-
-        # 2) pause, then move forward one cell
-        rospy.sleep(1.0)
-        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
-        Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
-
-        # 3) pause before next decision
-        rospy.loginfo("Pausing for 2 s")
-        rospy.sleep(2.0)
-
-        # return the *actual* coordinate (for checkpoint/goal checks)
-        # here we assume perfect odometry: map heading+movement to grid:
-        #   convert believed_position + action → new coord
-        bp = controller.get_believed_position()
-        dr, dc = {'up':(-1,0),'down':(1,0),
-                  'left':(0,-1),'right':(0,1)}[action]
-        return (bp[0]+dr, bp[1]+dc)
-
-    def detect_checkpoint(coord):
-        return coord in maze.checkpoints
-
-    def check_goal(coord):
-        return coord == maze.goal
-
     # ——— replannable path loop ————————————————————————————————————
     THRESH = controller.entropy_thresh
     believed_path = []
-
-    def pick_waypoint():
-        if controller.belief.max() < THRESH:
-            mp = controller.get_believed_position()
-            cps_sorted = sorted(
-                maze.checkpoints,
-                key=lambda x: abs(x[0]-mp[0]) + abs(x[1]-mp[1])
-            )
-            return cps_sorted[0]
-        return maze.goal
 
     waypoint = pick_waypoint()
     path     = maze.shortest_path(controller.get_believed_position(), waypoint)
@@ -146,17 +160,6 @@ def main():
 
     global marker_exists, new_belief_updater
     marker_exists = False
-
-
-    def update_grid_probabilities(grid_probabilities):
-        for idx, cell in enumerate(grid_probabilities):
-            x = cell.point.x
-            y = cell.point.y
-            probability = cell.point.z
-            new_belief_updater = np.zeros((len(grid), len(grid[0])))
-            new_belief_updater[int(x)][int(y)] = probability
-        
-        marker_exists = True
 
     for a in actions:
         # log current belief and planned target
