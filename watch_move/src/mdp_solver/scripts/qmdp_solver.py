@@ -7,14 +7,50 @@ from alphabot_driver.PCA9685 import PCA9685
 from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
+CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
+LINEAR_SPEED  = 0.2       # m/s
+ANGULAR_SPEED = math.pi/2 # rad/s for 90°
+CELL_TIME     = CELL_SIZE / LINEAR_SPEED
+TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
+MOTOR_PWM     = 10       # wheel PWM
 
-def shutdown(signum=None, frame=None):
-    rospy.loginfo('Shutting down')
-    Ab.stop()
-    cmd_pub.publish(Twist())
-    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
-    rospy.signal_shutdown('exit')
-    sys.exit(0)
+# Hardware
+Ab  = AlphaBot()
+pwm = PCA9685(0x40)
+pwm.setPWMFreq(50)
+
+# Maze and checkpoints
+grid = [
+    [0,0,0,1,0],
+    [1,1,0,1,0],
+    [0,0,0,0,0],
+    [0,1,1,1,0],
+    [0,0,0,0,0]
+]
+
+start, goal = (0,0), (4,0)
+checkpoints = [(0,0,1), (1,4,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+
+marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
+
+
+# Strip orientation for the solver
+checkpoints = [tuple(cp[:2]) for cp in checkpoints]
+
+# Build MDP & controller
+maze       = Maze(grid, start, goal, checkpoints=checkpoints)
+mdp        = MDP(maze, slip_prob=0.1, step_cost=-1,
+                    goal_reward=100, gamma=0.95)
+mdp.value_iteration()
+controller = QMDPController(mdp)
+controller.init_belief()
+
+# Track heading for correct rotations
+heading = 0  # 0=east,1=north,2=west,3=south
+
+THRESH = controller.entropy_thresh
+
+
 
 def send_action(a_idx):
     global heading
@@ -84,31 +120,6 @@ def main():
 
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
-    CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
-    LINEAR_SPEED  = 0.2       # m/s
-    ANGULAR_SPEED = math.pi/2 # rad/s for 90°
-    CELL_TIME     = CELL_SIZE / LINEAR_SPEED
-    TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
-    MOTOR_PWM     = 10       # wheel PWM
-
-    # Hardware
-    Ab  = AlphaBot()
-    pwm = PCA9685(0x40)
-    pwm.setPWMFreq(50)
-
-    # Maze and checkpoints
-    grid = [
-        [0,0,0,1,0],
-        [1,1,0,1,0],
-        [0,0,0,0,0],
-        [0,1,1,1,0],
-        [0,0,0,0,0]
-    ]
-    start, goal = (0,0), (4,0)
-    checkpoints = [(0,0,1), (1,4,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
-
-    marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
-
     # Publish checkpoint poses
     marker_pub = rospy.Publisher(
         'global_locations/marker_pose', PoseArray, queue_size=10
@@ -131,28 +142,20 @@ def main():
 
     rospy.Subscriber('global_locations/grid_probabilities', Polygon, update_grid_probabilities)
 
-    # Strip orientation for the solver
-    checkpoints = [tuple(cp[:2]) for cp in checkpoints]
-
-    # Build MDP & controller
-    maze       = Maze(grid, start, goal, checkpoints=checkpoints)
-    mdp        = MDP(maze, slip_prob=0.1, step_cost=-1,
-                     goal_reward=100, gamma=0.95)
-    mdp.value_iteration()
-    controller = QMDPController(mdp)
-    controller.init_belief()
-
+    # ——— replannable path loop ————————————————————————————————————
     # Shutdown handler
     settings = termios.tcgetattr(sys.stdin)
-    
+
+    def shutdown(signum=None, frame=None):
+        rospy.loginfo('Shutting down')
+        Ab.stop()
+        cmd_pub.publish(Twist())
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+        rospy.signal_shutdown('exit')
+        sys.exit(0)
+
     signal.signal(signal.SIGINT,  shutdown)
     signal.signal(signal.SIGTERM, shutdown)
-
-    # Track heading for correct rotations
-    heading = 0  # 0=east,1=north,2=west,3=south
-
-    # ——— replannable path loop ————————————————————————————————————
-    THRESH = controller.entropy_thresh
     believed_path = []
 
     waypoint = pick_waypoint()
@@ -168,7 +171,6 @@ def main():
                       controller.get_believed_position(), waypoint)
         rospy.loginfo("Executing action = %s", a)
 
-        
         
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
