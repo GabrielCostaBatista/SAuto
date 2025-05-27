@@ -178,9 +178,8 @@ class QMDPController:
         b_pred = self.belief @ self.mdp.P[:,action_idx,:]
         self.belief = b_pred / b_pred.sum()
 
-    def relocalise(self, state_idx):
-        b = np.zeros(self.mdp.n)
-        b[state_idx] = 1.0
+    def relocalise(self, marker_matrix): 
+        b =  marker_matrix @ self.belief
         self.belief = b
 
     def select_action(self):

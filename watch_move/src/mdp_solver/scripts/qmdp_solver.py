@@ -142,6 +142,20 @@ def main():
     path     = maze.shortest_path(controller.get_believed_position(), waypoint)
     actions  = maze.coords_to_actions(path)
 
+    global marker_exists, new_belief_updater
+    marker_exists = False
+
+
+    def update_grid_probabilities(grid_probabilities):
+        for idx, cell in enumerate(grid_probabilities):
+            x = cell.point.x
+            y = cell.point.y
+            probability = cell.point.z
+            new_belief_updater = np.zeros((len(grid), len(grid[0])))
+            new_belief_updater[int(x)][int(y)] = probability
+        
+        marker_exists = True
+
     for a in actions:
         # log current belief and planned target
         rospy.loginfo("Believed pos = %s → waypoint %s",
@@ -150,15 +164,17 @@ def main():
 
         a_idx = controller.mdp.actions.index(a)
         coord = send_action(a_idx)
-
+        
         # if at a checkpoint, relocalise & replan
-        if detect_checkpoint(coord):
+        if marker_exists == True:
             idx = maze.coord_to_state(coord)
             controller.relocalise(idx)
             rospy.loginfo("Checkpoint at %s: belief collapsed", coord)
             waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
+            marker_exists = False
+            rospy.sleep(2.0)
             continue
 
         # otherwise predict belief forward
