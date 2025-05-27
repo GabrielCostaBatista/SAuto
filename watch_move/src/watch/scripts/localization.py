@@ -5,6 +5,7 @@ import math
 from geometry_msgs.msg import PoseStamped, PoseArray, Polygon, Point32
 from std_msgs.msg import Header
 from shapely.geometry import box
+from shapely.ops import unary_union
 
 # Number of protected markers (can be overridden via ROS parameter in launch file)
 NUM_PROTECTED_MARKERS = rospy.get_param('~num_protected_markers', 2)
