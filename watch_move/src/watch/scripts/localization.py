@@ -125,7 +125,7 @@ class RobotLocalizer:
         except (ValueError, IndexError) as e:
             rospy.logerr(f"Error parsing marker ID: {e}")
     
-
+   
     def discrete_orientation_to_yaw(self, discrete_orientation):
         """
         Convert discrete orientation to yaw angle in radians
@@ -169,10 +169,10 @@ class RobotLocalizer:
                 rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
                 return
 
-            i_min = global_marker_pos[0] - self.distance
-            i_max = global_marker_pos[0] + self.distance
-            j_min = global_marker_pos[1] - self.distance
-            j_max = global_marker_pos[1] + self.distance
+            i_min = (global_marker_pos[0] - self.distance)
+            i_max = (global_marker_pos[0] + self.distance)
+            j_min = (global_marker_pos[1] - self.distance)
+            j_max = (global_marker_pos[1] + self.distance)
 
             if global_marker_pos[2] == 0:
                 i_max = global_marker_pos[0]
@@ -193,21 +193,20 @@ class RobotLocalizer:
 
             # Create Polygon message to publish probabilities
             probability_map = Polygon()
-            probability_map.header = Header()
             
-            for i in range(i_min, i_max + 1):
-                for j in range(j_min, j_max + 1):
+            for i in np.linspace(i_min, i_max, num = i_max - i_min +1):
+                for j in np.linspace(j_min, j_max, num = j_max - j_min +1):
                     cell_box = box(i, j, i+1, j+1)
                     intersection = cell_box.intersection(sector)
                     intersection_area = intersection.area if not intersection.is_empty else 0
                     probability = intersection_area / total_sector_area
-                    probability_map[i, j] = probability
+                    #probability_map[i, j] = probability
                     if probability > 0:  # Only add points with non-zero probability
                         point = Point32()
                         point.x = i
                         point.y = j
                         point.z = probability
-                        probability_map.polygon.points.append(point)
+                        probability_map.points.append(point)
 
             self.grid_prob_pub.publish(probability_map)
 
