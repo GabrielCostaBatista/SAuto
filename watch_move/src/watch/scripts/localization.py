@@ -7,6 +7,7 @@ from std_msgs.msg import Header
 from shapely.geometry import box, Polygon as ShapelyPolygon
 from shapely.ops import unary_union
 
+
 def annular_sector(center, r_inner, r_outer, angle_start, angle_end, num_points=100):
     """Create a shapely Polygon representing an annular sector."""
     cx, cy = center
@@ -29,6 +30,8 @@ RADIUS_N_STD_DEV = rospy.get_param('~radius_n_std_dev', 2)
 # Get number of frames to average from ROS parameter (default 10)
 NUM_FRAMES_TO_AVERAGE = rospy.get_param('~num_frames_to_average', 10)
 
+global distance 
+
 # Initialize distances list for averaging
 distances = {}
 
@@ -44,6 +47,7 @@ class RobotLocalizer:
         self.global_markers = {}  # marker_id -> (x, y, orientation) in world coordinates
         self.protected_marker_positions = {}  # marker_id -> (x, y) for protected markers
         self.robot_observations = {}  # marker_id -> (x, y, z) robot's observation of marker
+        self.distance = 0.0
         
         # Initialize protected marker positions (you can modify these as needed)
         # For now, setting some default positions - you should update these with actual positions
@@ -100,7 +104,7 @@ class RobotLocalizer:
             timestamp = msg.header.stamp
 
             # Compute distance for grid probabilities
-            distance = math.sqrt((msg.pose.position.x/CELL_SIZE)**2 + (msg.pose.position.z/CELL_SIZE)**2)
+            self.distance = math.sqrt((msg.pose.position.x/CELL_SIZE)**2 + (msg.pose.position.z/CELL_SIZE)**2)
 
             if marker_id in distances and distances[marker_id]:
                 last_ts = distances[marker_id][-1][1]
@@ -111,7 +115,7 @@ class RobotLocalizer:
             if marker_id not in distances:
                 distances[marker_id] = []
             
-            distances[marker_id].append([distance, timestamp])
+            distances[marker_id].append([self.distance, timestamp])
 
             if len(distances[marker_id]) == NUM_FRAMES_TO_AVERAGE:
                 # Compute grid probabilities based on this marker observation
@@ -165,10 +169,10 @@ class RobotLocalizer:
                 rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
                 return
 
-            i_min = global_marker_pos[0] - distance
-            i_max = global_marker_pos[0] + distance
-            j_min = global_marker_pos[1] - distance
-            j_max = global_marker_pos[1] + distance
+            i_min = global_marker_pos[0] - self.distance
+            i_max = global_marker_pos[0] + self.distance
+            j_min = global_marker_pos[1] - self.distance
+            j_max = global_marker_pos[1] + self.distance
 
             if global_marker_pos[2] == 0:
                 i_max = global_marker_pos[0]
@@ -179,9 +183,12 @@ class RobotLocalizer:
             elif global_marker_pos[2] == 3:
                 j_max = global_marker_pos[1] 
 
-            distance = np.mean(distances)
-            distance_error = np.std([first[0] for first in distances]) * RADIUS_N_STD_DEV
-            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner=distance - distance_error, r_outer=distance + distance_error, angle_start=0, angle_end=180)
+            # Extract only the distance values for this marker
+            marker_distances = [pair[0] for pair in distances[observed_marker_id]]
+            self.distance = np.mean(marker_distances)
+            distance_error = np.std(marker_distances) * RADIUS_N_STD_DEV
+
+            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner=self.distance - distance_error, r_outer=self.distance + distance_error, angle_start=0, angle_end=180)
             total_sector_area = sector.area if sector.area > 0 else 1  # avoid zero division
 
             # Create Polygon message to publish probabilities
