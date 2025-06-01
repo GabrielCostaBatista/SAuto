@@ -11,7 +11,7 @@ CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
 LINEAR_SPEED  = 0.2       # m/s
 ANGULAR_SPEED = math.pi/2 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
-TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
+TURN_TIME_90  = 0#(math.pi/2) / ANGULAR_SPEED
 MOTOR_PWM     = 0#10       # wheel PWM
 
 # Hardware
