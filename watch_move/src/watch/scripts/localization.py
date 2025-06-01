@@ -195,8 +195,8 @@ class RobotLocalizer:
             probability_map = Polygon()
             probability_map.header = Header()
             
-            for i in range(i_min, i_max + 1):
-                for j in range(j_min, j_max + 1):
+            for i in range(int(i_min), int(i_max + 1)):
+                for j in range(int(j_min), int(j_max + 1)):
                     cell_box = box(i, j, i+1, j+1)
                     intersection = cell_box.intersection(sector)
                     intersection_area = intersection.area if not intersection.is_empty else 0
