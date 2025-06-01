@@ -38,7 +38,7 @@ class ArucoCompressedDetector:
             rospy.loginfo("[INFO] Camera calibration loaded.")
 
         # === Set marker length in real-world units (e.g., cm or meters) ===
-        self.marker_size = rospy.get_param('marker_size', 0.10)  # detault to 10 cm marker size
+        self.marker_size = rospy.get_param('~marker_size', 0.10)  # detault to 10 cm marker size
 
         rospy.Subscriber("/raspicam_node/image/compressed", CompressedImage, self.image_callback)
         rospy.loginfo("ArUco detector node started. Waiting for images...")

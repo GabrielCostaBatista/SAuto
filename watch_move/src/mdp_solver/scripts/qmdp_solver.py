@@ -8,11 +8,11 @@ from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
 CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
-LINEAR_SPEED  = 0.2       # m/s
-ANGULAR_SPEED = math.pi/2 # rad/s for 90°
+LINEAR_SPEED  = 0.1       # m/s
+ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
-MOTOR_PWM     = 10       # wheel PWM
+MOTOR_PWM     = 12       # wheel PWM
 
 # Hardware
 Ab  = AlphaBot()
@@ -23,7 +23,7 @@ pwm.setPWMFreq(50)
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -40,13 +40,14 @@ grid = [
     [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
     [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
     [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
     [1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
     [1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
-start, goal = (1,1), (20,6)
-checkpoints = [(6,1,0), (5,19,3), (13,17,0), (21,15,0), (21,6,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+start, goal = (1,1), (7,20)
+checkpoints = [(1,6,0), (19,5,3), (17,13,0), (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
@@ -87,20 +88,20 @@ def send_action(a_idx):
     desired = {'right':0,'up':1,'left':2,'down':3}[action]
     diff = (desired - heading) % 4
     if diff == 1:
-        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 2:
-        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
         Ab.left(); rospy.sleep(TURN_TIME_90)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 3:
-        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
         Ab.right(); rospy.sleep(TURN_TIME_90); Ab.stop()
     heading = desired
 
     # 2) pause, then move forward one cell
     rospy.sleep(1.0)
-    Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+    Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
     Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
 
     # 3) pause before next decision

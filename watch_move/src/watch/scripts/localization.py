@@ -174,6 +174,8 @@ class RobotLocalizer:
             j_min = int(global_marker_pos[1] - self.distance)
             j_max = int(global_marker_pos[1] + self.distance)
 
+            print(f"i_min: {i_min}, i_max: {i_max}, j_min: {j_min}, j_max: {j_max}")
+
             if global_marker_pos[2] == 0:
                 i_max = global_marker_pos[0]
             elif global_marker_pos[2] == 1:
