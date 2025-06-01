@@ -182,7 +182,6 @@ def main():
             believed_position = controller.get_believed_position()
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
-            waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
             marker_exists = False
@@ -195,7 +194,6 @@ def main():
             coord = send_action(a_idx)
             controller.predict_belief(a_idx)
             believed_path.append(controller.get_believed_position())
-            waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
 
