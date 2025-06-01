@@ -116,7 +116,7 @@ def pick_waypoint():
 
 def update_grid_probabilities(grid_probabilities):
     global marker_exists, new_belief_updater
-    belief_updater = np.copy(length_belief)
+    belief_updater = length_belief.copy()
     new_belief_updater = np.zeros(len(length_belief), dtype=float)
     for idx, cell in enumerate(grid_probabilities.points):
         x = cell.x
