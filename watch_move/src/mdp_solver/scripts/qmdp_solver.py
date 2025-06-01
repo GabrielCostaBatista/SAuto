@@ -29,7 +29,7 @@ grid = [
 ]
 
 start, goal = (0,0), (4,0)
-checkpoints = [(0,0,1), (1,4,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+checkpoints = [(0,0,1), (2,0,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
@@ -164,20 +164,20 @@ def main():
 
     global marker_exists, new_belief_updater
     marker_exists = False
+    believed_position = start
 
-    for a in actions:
+    while believed_position != goal:
         # log current belief and planned target
         rospy.loginfo("Believed pos = %s → waypoint %s",
                       controller.get_believed_position(), waypoint)
-        rospy.loginfo("Executing action = %s", a)
-
+        rospy.loginfo("Executing action = %s", actions[0])
+        update_grid_probabilities
         
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
             idx = maze.coord_to_state(coord)
-            update_grid_probabilities
             controller.relocalise(new_belief_updater)
-            a_idx = controller.mdp.actions.index(a)
+            a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             believed_position = controller.get_believed_position()
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
@@ -191,16 +191,16 @@ def main():
 
         # otherwise predict belief forward
         else:
-            a_idx = controller.mdp.actions.index(a)
+            a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             controller.predict_belief(a_idx)
             believed_path.append(controller.get_believed_position())
+            waypoint = pick_waypoint()
+            path     = maze.shortest_path(coord, waypoint)
+            actions  = maze.coords_to_actions(path)
 
-        # stop if goal reached
-        if check_goal(coord):
-            rospy.loginfo("Arrived at goal %s", coord)
-            break
-
+        
+    rospy.loginfo("Arrived at goal %s", coord)
     rospy.loginfo("Final believed path: %s", believed_path)
     shutdown()
 
