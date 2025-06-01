@@ -37,7 +37,7 @@ marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5,
 # Strip orientation for the solver
 checkpoints_for_maze = [tuple(cp[:2]) for cp in checkpoints]
 
-global lenght_belief
+global length_belief
 
 # Build MDP & controller
 maze       = Maze(grid, start, goal, checkpoints=checkpoints_for_maze)
