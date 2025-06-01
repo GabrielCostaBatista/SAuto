@@ -171,7 +171,7 @@ def main():
         rospy.loginfo("Believed pos = %s → waypoint %s",
                       controller.get_believed_position(), waypoint)
         rospy.loginfo("Executing action = %s", actions[0])
-        update_grid_probabilities
+        update_grid_probabilities()
         
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
