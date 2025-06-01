@@ -37,8 +37,16 @@ marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5,
 # Strip orientation for the solver
 checkpoints_for_maze = [tuple(cp[:2]) for cp in checkpoints]
 
+global lenght_belief
+
 # Build MDP & controller
 maze       = Maze(grid, start, goal, checkpoints=checkpoints_for_maze)
+length_belief = {}
+for i in range (grid.shape[0]):
+    for j in range (grid.shape[1]):
+        if grid[i][j] == 0:
+            length_belief[(i,j)] = 0.0
+
 mdp        = MDP(maze, slip_prob=0.1, step_cost=-1,
                     goal_reward=100, gamma=0.95)
 mdp.value_iteration()
@@ -108,12 +116,18 @@ def pick_waypoint():
 
 def update_grid_probabilities(grid_probabilities):
     global marker_exists, new_belief_updater
-    new_belief_updater = np.zeros((len(grid), len(grid[0])))
+    belief_updater = np.copy(length_belief)
+    new_belief_updater = np.zeros(len(length_belief), dtype=float)
     for idx, cell in enumerate(grid_probabilities.points):
         x = cell.x
         y = cell.y
         probability = cell.z
-        new_belief_updater[int(x)][int(y)] = probability
+        belief_updater[(int(x), int(y))] = probability
+    counter= 0
+    for coordinate, value in belief_updater.items():
+        new_belief_updater[counter] = value
+        counter += 1
+    new_belief_updater /= np.sum(new_belief_updater)
     
     marker_exists = True
 
