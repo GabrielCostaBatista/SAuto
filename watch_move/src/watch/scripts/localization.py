@@ -169,8 +169,6 @@ class RobotLocalizer:
                 rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
                 return
 
-            print(f"global_marker_pos: {global_marker_pos} and self.distance: {self.distance}")
-
             i_min = int(global_marker_pos[0] - self.distance)
             i_max = int(global_marker_pos[0] + self.distance)
             j_min = int(global_marker_pos[1] - self.distance)
@@ -199,7 +197,11 @@ class RobotLocalizer:
             print(f"i_min: {i_min}, i_max: {i_max}, j_min: {j_min}, j_max: {j_max}")
             
             for i in np.linspace(i_min, i_max, num = i_max - i_min +1):
+                if i < 0:
+                    continue
                 for j in np.linspace(j_min, j_max, num = j_max - j_min +1):
+                    if j < 0:
+                        continue
                     cell_box = box(i, j, i+1, j+1)
                     intersection = cell_box.intersection(sector)
                     intersection_area = intersection.area if not intersection.is_empty else 0
