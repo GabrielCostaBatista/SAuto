@@ -105,10 +105,10 @@ def pick_waypoint():
     return maze.goal
 
 def update_grid_probabilities(grid_probabilities):
-    for idx, cell in enumerate(grid_probabilities):
-        x = cell.point.x
-        y = cell.point.y
-        probability = cell.point.z
+    for idx, cell in enumerate(grid_probabilities.points):
+        x = cell.x
+        y = cell.y
+        probability = cell.z
         new_belief_updater = np.zeros((len(grid), len(grid[0])))
         new_belief_updater[int(x)][int(y)] = probability
     

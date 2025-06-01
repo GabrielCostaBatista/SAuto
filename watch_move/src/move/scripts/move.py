@@ -28,7 +28,17 @@ key_mapping = {
     '\x1b[A': 'camera_up',     # Up arrow - Camera tilt up
     '\x1b[B': 'camera_down',   # Down arrow - Camera tilt down
     '\x1b[D': 'camera_left',   # Left arrow - Camera pan left
-    '\x1b[C': 'camera_right'   # Right arrow - Camera pan right
+    '\x1b[C': 'camera_right',   # Right arrow - Camera pan right
+    't': 'forward_step',
+    'g': 'turnback_180',
+    'f': 'turnleft_90',
+    'h': 'turnright_90',
+    "1": '1',
+    "2": '2',
+    "3": '3',
+    "4": '4',
+    "5": '5',
+    "6": '6'
 }
 
 # Speed settings
@@ -41,6 +51,93 @@ SERVO_STEP = 5     # Step size for servo movement
 MIN_PULSE = 500    # Minimum servo pulse
 MAX_PULSE = 2500   # Maximum servo pulse
 
+MIN_PWM = 0.2*MAX_PWM  # Minimum PWM value (percentage)
+TIME_FORWARD    = 1  # Time to move forward (in seconds)
+TURN_TIME_90    = 1.2  # Time to turn 90 degrees (in seconds)    
+
+global Turn_time
+Turn_time = 0.7
+
+def turnleft_1():
+    Turn_time = 0.5 + 0.1*1  # Time to turn 90 degrees (in seconds)
+    rospy.loginfo("0.6")
+def turnleft_2():
+    Turn_time = 0.5 + 0.1*2  # Time to turn 90 degrees (in seconds)
+    rospy.loginfo("0.7")
+def turnleft_3():
+    Turn_time = 0.5 + 0.1*3  # Time to turn 90 degrees (in seconds)
+    rospy.loginfo("0.8")
+def turnleft_4():
+    Turn_time = 0.5 + 0.1*1  # Time to turn 90 degrees (in seconds)
+    rospy.loginfo("0.9")
+def turnleft_5():
+    Turn_time = 0.5 + 0.1*2  # Time to turn 90 degrees (in seconds)
+    rospy.loginfo("1.0")
+def turnleft_6():
+    Turn_time = 0.5 + 0.1*1  # Time to turn 90 degrees (in seconds)    
+    rospy.loginfo("1.1")
+    
+
+def forward_step(): # press "y"
+    """Turn the robot right."""
+    rospy.loginfo("Move 1 step forward")
+    rospy.sleep(5.0)
+    Ab.setPWMA(MIN_PWM*1.3)
+    Ab.setPWMB(MIN_PWM)
+    rospy.sleep(2.0)
+    Ab.forward()
+    #rospy.sleep(TIME_FORWARD/5)
+    #Ab.setPWMA(0.6*MIN_PWM)
+    #Ab.setPWMB(0.6*MIN_PWM)
+    #rospy.sleep(TIME_FORWARD/5) #medium step
+    #Ab.setPWMA(MIN_PWM)
+    #Ab.setPWMB(MIN_PWM)
+    #rospy.sleep(TIME_FORWARD/5)
+    #Ab.setPWMA(0.6*MIN_PWM)
+    #Ab.setPWMB(0.6*MIN_PWM)
+    #rospy.sleep(TIME_FORWARD/5)
+    #Ab.setPWMA(0.2*MIN_PWM)
+    #Ab.setPWMB(0.2*MIN_PWM)
+    rospy.sleep(TIME_FORWARD)
+    Ab.stop()
+    rospy.sleep(5.0)
+def turnleft_90(): # press "f"
+    """Turn the robot left."""
+    rospy.loginfo("turn_left")
+    rospy.sleep(5.0)
+    Ab.setPWMA(MAX_PWM)
+    Ab.setPWMB(MAX_PWM)
+    Ab.left()
+    rospy.sleep(Turn_time)
+    Ab.stop()
+    rospy.sleep(5.0)
+    
+def turnright_90(): # press "h"
+    """Turn the robot right."""
+    rospy.loginfo("turn_right")
+    rospy.sleep(5.0)
+    Ab.setPWMA(MAX_PWM)
+    Ab.setPWMB(MAX_PWM)
+    Ab.right()
+    rospy.sleep(Turn_time)
+    Ab.stop()
+    rospy.sleep(5.0)
+def turnback_180(): # press "g"
+    """Turn the robot 180 degrees."""
+    rospy.loginfo("turn_back")
+    rospy.sleep(5.0)
+    Ab.setPWMA(MAX_PWM)
+    Ab.setPWMB(MAX_PWM)
+    Ab.left()
+    rospy.sleep(2.0*Turn_time)  # Adjust time for 180 turn
+    Ab.stop()
+    rospy.sleep(1.0)
+def stop_robot():
+    """Stop the robot."""
+    Ab.stop()
+    rospy.loginfo("Stopping robot")
+    
+    
 def get_key():
     tty.setraw(sys.stdin.fileno())
     key = sys.stdin.read(1)
@@ -255,6 +352,26 @@ def main():
                     else:
                         HStep = -SERVO_STEP  # Pan right
                         rospy.loginfo("Camera pan right")
+                elif command == 'turnright_90':
+                    turnright_90()
+                elif command == 'turnleft_90':
+                    turnleft_90()
+                elif command == 'forward_step':
+                    forward_step()
+                elif command == 'turnback_180':
+                    turnback_180()
+                elif command == '1':
+                    turnleft_1()
+                elif command == '2':
+                    turnleft_2()
+                elif command == '3':
+                    turnleft_3()
+                elif command == '4':
+                    turnleft_4()
+                elif command == '5':
+                    turnleft_5()
+                elif command == '6':
+                    turnleft_6()
                 
                 # Create and publish Twist message
                 twist = Twist()

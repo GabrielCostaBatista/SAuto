@@ -197,6 +197,10 @@ class RobotLocalizer:
             
             for i in range(int(i_min), int(i_max + 1)):
                 for j in range(int(j_min), int(j_max + 1)):
+=======
+            for i in np.linspace(i_min, i_max, num = i_max - i_min +1):
+                for j in np.linspace(j_min, j_max, num = j_max - j_min +1):
+>>>>>>> ce6abed15038da3fa82a0fd0fe75c33911ccd04c
                     cell_box = box(i, j, i+1, j+1)
                     intersection = cell_box.intersection(sector)
                     intersection_area = intersection.area if not intersection.is_empty else 0
