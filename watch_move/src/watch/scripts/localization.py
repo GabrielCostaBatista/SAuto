@@ -193,8 +193,7 @@ class RobotLocalizer:
 
             # Create Polygon message to publish probabilities
             probability_map = Polygon()
-            probability_map.header = Header()
-
+            
             for i in np.linspace(i_min, i_max, num = i_max - i_min +1):
                 for j in np.linspace(j_min, j_max, num = j_max - j_min +1):
                     cell_box = box(i, j, i+1, j+1)
@@ -295,4 +294,3 @@ if __name__ == '__main__':
             rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database or protected markers.")
             return
     """
-            
