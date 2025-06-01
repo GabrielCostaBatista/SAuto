@@ -179,9 +179,8 @@ class QMDPController:
         self.belief = b_pred / b_pred.sum()
 
     def relocalise(self, marker_matrix): 
-        print("Relocalising with marker matrix:", marker_matrix)
-        print("Old belief:", self.belief)
         b =  marker_matrix @ self.belief
+        print(f"Relocalised belief: {b}")
         b /= b.sum()
         self.belief = b
 
