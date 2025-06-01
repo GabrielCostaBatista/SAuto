@@ -11,8 +11,8 @@ CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
 LINEAR_SPEED  = 0.2       # m/s
 ANGULAR_SPEED = math.pi/2 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
-TURN_TIME_90  = 0#(math.pi/2) / ANGULAR_SPEED
-MOTOR_PWM     = 0#10       # wheel PWM
+TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
+MOTOR_PWM     = 10       # wheel PWM
 
 # Hardware
 Ab  = AlphaBot()
@@ -28,8 +28,8 @@ grid = [
     [0,0,0,0,0]
 ]
 
-start, goal = (0,0), (4,0)
-checkpoints = [(0,0,1), (2,0,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+start, goal = (0,0), (19,5)
+checkpoints = [(5,0,0), (4,18,3), (12,16,0), (20,14,0), (20,5,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
