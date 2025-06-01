@@ -122,7 +122,8 @@ def update_grid_probabilities(grid_probabilities):
         x = cell.x
         y = cell.y
         probability = cell.z
-        belief_updater[(int(x), int(y))] = probability
+        if (int(x), int(y)) in belief_updater:
+            belief_updater[(int(x), int(y))] = probability
     counter= 0
     for coordinate, value in belief_updater.items():
         new_belief_updater[counter] = value
