@@ -50,6 +50,8 @@ heading = 0  # 0=east,1=north,2=west,3=south
 
 THRESH = controller.entropy_thresh
 
+marker_exists = False
+new_belief_updater = None
 
 
 def send_action(a_idx):
@@ -105,6 +107,7 @@ def pick_waypoint():
     return maze.goal
 
 def update_grid_probabilities(grid_probabilities):
+    global marker_exists, new_belief_updater
     for idx, cell in enumerate(grid_probabilities.points):
         x = cell.x
         y = cell.y
@@ -116,6 +119,7 @@ def update_grid_probabilities(grid_probabilities):
 
 
 def main():
+    global marker_exists, new_belief_updater
     rospy.init_node('qmdp_controller')
 
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -162,16 +166,16 @@ def main():
     path     = maze.shortest_path(controller.get_believed_position(), waypoint)
     actions  = maze.coords_to_actions(path)
 
-    global marker_exists, new_belief_updater
-    marker_exists = False
     believed_position = start
+
+    # Wait for camera
+    rospy.sleep(5.0)
 
     while believed_position != goal:
         # log current belief and planned target
         rospy.loginfo("Believed pos = %s → waypoint %s",
                       controller.get_believed_position(), waypoint)
         rospy.loginfo("Executing action = %s", actions[0])
-        update_grid_probabilities()
         
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
@@ -198,7 +202,7 @@ def main():
             actions  = maze.coords_to_actions(path)
 
         
-    rospy.loginfo("Arrived at goal %s", coord)
+    rospy.loginfo("Arrived at goal %s", goal)
     rospy.loginfo("Final believed path: %s", believed_path)
     shutdown()
 
