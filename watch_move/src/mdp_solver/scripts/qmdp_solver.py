@@ -42,8 +42,8 @@ global lenght_belief
 # Build MDP & controller
 maze       = Maze(grid, start, goal, checkpoints=checkpoints_for_maze)
 length_belief = {}
-for i in range (grid.shape[0]):
-    for j in range (grid.shape[1]):
+for i in range (len(grid)):
+    for j in range (len(grid[0])):
         if grid[i][j] == 0:
             length_belief[(i,j)] = 0.0
 
