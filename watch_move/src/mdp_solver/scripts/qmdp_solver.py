@@ -114,6 +114,10 @@ def send_action(a_idx):
     bp = controller.get_believed_position()
     dr, dc = {'up':(-1,0),'down':(1,0),
                 'left':(0,-1),'right':(0,1)}[action]
+    if grid[bp[0]+dr][bp[1]+dc] == 1:
+        # if we hit a wall, stay in place
+        rospy.logwarn("Bumped into wall at %s, staying in place", bp)
+        return bp
     return (bp[0]+dr, bp[1]+dc)
 
 def detect_checkpoint(coord):
@@ -146,6 +150,10 @@ def update_grid_probabilities(grid_probabilities):
     for coordinate, value in belief_updater.items():
         new_belief_updater[counter] = value
         counter += 1
+
+    if np.sum(new_belief_updater) < 1e-8:
+        rospy.logwarn("No valid belief updater found, using uniform distribution")
+        new_belief_updater = np.ones(len(length_belief), dtype=float)
     new_belief_updater /= np.sum(new_belief_updater)
     
     marker_exists = True
