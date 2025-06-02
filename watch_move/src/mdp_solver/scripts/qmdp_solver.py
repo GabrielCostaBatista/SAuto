@@ -150,6 +150,10 @@ def update_grid_probabilities(grid_probabilities):
     for coordinate, value in belief_updater.items():
         new_belief_updater[counter] = value
         counter += 1
+
+    if np.sum(new_belief_updater) < 1e-8:
+        rospy.logwarn("No valid belief updater found, using uniform distribution")
+        new_belief_updater = np.ones(len(length_belief), dtype=float)
     new_belief_updater /= np.sum(new_belief_updater)
     
     marker_exists = True
