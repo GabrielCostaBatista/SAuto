@@ -137,11 +137,11 @@ def update_grid_probabilities(grid_probabilities):
     belief_updater = length_belief.copy()
     new_belief_updater = np.zeros(len(length_belief), dtype=float)
     for idx, cell in enumerate(grid_probabilities.points):
-        x = cell.x
-        y = cell.y
+        row = cell.x
+        column = cell.y
         probability = cell.z
-        if (int(x), int(y)) in belief_updater:
-            belief_updater[(int(x), int(y))] = probability
+        if (int(row), int(column)) in belief_updater:
+            belief_updater[(int(row), int(column))] = probability
     counter= 0
     for coordinate, value in belief_updater.items():
         new_belief_updater[counter] = value
