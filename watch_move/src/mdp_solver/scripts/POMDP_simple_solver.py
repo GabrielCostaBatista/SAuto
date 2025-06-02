@@ -179,7 +179,11 @@ class QMDPController:
         self.belief = b_pred / b_pred.sum()
 
     def relocalise(self, marker_matrix): 
-        b =  marker_matrix @ self.belief
+        b =  np.multiply(marker_matrix, self.belief)
+        if b.sum() == 0:
+            b = marker_matrix.copy()
+        print(f"Relocalised belief: {b}")
+        b /= b.sum()
         self.belief = b
 
     def select_action(self):

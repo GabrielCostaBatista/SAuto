@@ -8,11 +8,11 @@ from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
 CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
-LINEAR_SPEED  = 0.2       # m/s
-ANGULAR_SPEED = math.pi/2 # rad/s for 90°
+LINEAR_SPEED  = 0.1       # m/s
+ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
-MOTOR_PWM     = 0#10       # wheel PWM
+MOTOR_PWM     = 12       # wheel PWM
 
 # Hardware
 Ab  = AlphaBot()
@@ -21,15 +21,33 @@ pwm.setPWMFreq(50)
 
 # Maze and checkpoints
 grid = [
-    [0,0,0,1,0],
-    [1,1,0,1,0],
-    [0,0,0,0,0],
-    [0,1,1,1,0],
-    [0,0,0,0,0]
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
-start, goal = (0,0), (4,0)
-checkpoints = [(0,0,1), (2,0,1), (3,4,2), (4,2,3)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+start, goal = (1,1), (7,20)
+checkpoints = [(1,6,0), (19,5,3), (17,13,0), (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
@@ -37,8 +55,16 @@ marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5,
 # Strip orientation for the solver
 checkpoints_for_maze = [tuple(cp[:2]) for cp in checkpoints]
 
+global length_belief
+
 # Build MDP & controller
 maze       = Maze(grid, start, goal, checkpoints=checkpoints_for_maze)
+length_belief = {}
+for i in range (len(grid)):
+    for j in range (len(grid[0])):
+        if grid[i][j] == 0:
+            length_belief[(i,j)] = 0.0
+
 mdp        = MDP(maze, slip_prob=0.1, step_cost=-1,
                     goal_reward=100, gamma=0.95)
 mdp.value_iteration()
@@ -50,6 +76,8 @@ heading = 0  # 0=east,1=north,2=west,3=south
 
 THRESH = controller.entropy_thresh
 
+marker_exists = False
+new_belief_updater = None
 
 
 def send_action(a_idx):
@@ -60,20 +88,20 @@ def send_action(a_idx):
     desired = {'right':0,'up':1,'left':2,'down':3}[action]
     diff = (desired - heading) % 4
     if diff == 1:
-        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 2:
-        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
         Ab.left(); rospy.sleep(TURN_TIME_90)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 3:
-        Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
         Ab.right(); rospy.sleep(TURN_TIME_90); Ab.stop()
     heading = desired
 
     # 2) pause, then move forward one cell
     rospy.sleep(1.0)
-    Ab.setPWMA(MOTOR_PWM); Ab.setPWMB(MOTOR_PWM)
+    Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
     Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
 
     # 3) pause before next decision
@@ -105,17 +133,26 @@ def pick_waypoint():
     return maze.goal
 
 def update_grid_probabilities(grid_probabilities):
+    global marker_exists, new_belief_updater
+    belief_updater = length_belief.copy()
+    new_belief_updater = np.zeros(len(length_belief), dtype=float)
     for idx, cell in enumerate(grid_probabilities.points):
         x = cell.x
         y = cell.y
         probability = cell.z
-        new_belief_updater = np.zeros((len(grid), len(grid[0])))
-        new_belief_updater[int(x)][int(y)] = probability
+        if (int(x), int(y)) in belief_updater:
+            belief_updater[(int(x), int(y))] = probability
+    counter= 0
+    for coordinate, value in belief_updater.items():
+        new_belief_updater[counter] = value
+        counter += 1
+    new_belief_updater /= np.sum(new_belief_updater)
     
     marker_exists = True
 
 
 def main():
+    global marker_exists, new_belief_updater
     rospy.init_node('qmdp_controller')
 
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -161,17 +198,17 @@ def main():
     waypoint = pick_waypoint()
     path     = maze.shortest_path(controller.get_believed_position(), waypoint)
     actions  = maze.coords_to_actions(path)
-
-    global marker_exists, new_belief_updater
-    marker_exists = False
+    coord = start
     believed_position = start
+
+    # Wait for camera
+    rospy.sleep(5.0)
 
     while believed_position != goal:
         # log current belief and planned target
         rospy.loginfo("Believed pos = %s → waypoint %s",
                       controller.get_believed_position(), waypoint)
         rospy.loginfo("Executing action = %s", actions[0])
-        update_grid_probabilities
         
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
@@ -200,7 +237,7 @@ def main():
             actions  = maze.coords_to_actions(path)
 
         
-    rospy.loginfo("Arrived at goal %s", coord)
+    rospy.loginfo("Arrived at goal %s", goal)
     rospy.loginfo("Final believed path: %s", believed_path)
     shutdown()
 

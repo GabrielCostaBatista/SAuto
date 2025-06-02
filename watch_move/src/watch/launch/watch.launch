@@ -12,6 +12,7 @@
     <!-- Launch the ArUco marker detection and pose node -->
     <node pkg="watch" type="aruco_pose.py" name="aruco_pose" output="screen">
         <param name="calibration_file" value="$(find watch)/camera_info/camera.yaml"/>
+        <param name="marker_size" type="double" value="0.05"/> <!-- Marker size in meters -->
     </node>
 
     <!-- Launch the ArUco marker listener node -->

@@ -169,10 +169,12 @@ class RobotLocalizer:
                 rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
                 return
 
-            i_min = (global_marker_pos[0] - self.distance)
-            i_max = (global_marker_pos[0] + self.distance)
-            j_min = (global_marker_pos[1] - self.distance)
-            j_max = (global_marker_pos[1] + self.distance)
+            i_min = int(global_marker_pos[0] - self.distance)
+            i_max = int(global_marker_pos[0] + self.distance)
+            j_min = int(global_marker_pos[1] - self.distance)
+            j_max = int(global_marker_pos[1] + self.distance)
+
+            print(f"i_min: {i_min}, i_max: {i_max}, j_min: {j_min}, j_max: {j_max}")
 
             if global_marker_pos[2] == 0:
                 i_max = global_marker_pos[0]
@@ -193,15 +195,22 @@ class RobotLocalizer:
 
             # Create Polygon message to publish probabilities
             probability_map = Polygon()
+
+            print(f"i_min: {i_min}, i_max: {i_max}, j_min: {j_min}, j_max: {j_max}")
             
             for i in np.linspace(i_min, i_max, num = i_max - i_min +1):
+                if i < 0:
+                    continue
                 for j in np.linspace(j_min, j_max, num = j_max - j_min +1):
+                    if j < 0:
+                        continue
                     cell_box = box(i, j, i+1, j+1)
                     intersection = cell_box.intersection(sector)
                     intersection_area = intersection.area if not intersection.is_empty else 0
                     probability = intersection_area / total_sector_area
                     #probability_map[i, j] = probability
                     if probability > 0:  # Only add points with non-zero probability
+                        print(f"Adding point ({i}, {j}) with probability {probability:.4f}")
                         point = Point32()
                         point.x = i
                         point.y = j

@@ -38,7 +38,7 @@ class ArucoCompressedDetector:
             rospy.loginfo("[INFO] Camera calibration loaded.")
 
         # === Set marker length in real-world units (e.g., cm or meters) ===
-        self.marker_length = 0.10  # 10 cm marker length
+        self.marker_size = rospy.get_param('~marker_size', 0.10)  # detault to 10 cm marker size
 
         rospy.Subscriber("/raspicam_node/image/compressed", CompressedImage, self.image_callback)
         rospy.loginfo("ArUco detector node started. Waiting for images...")
@@ -61,7 +61,7 @@ class ArucoCompressedDetector:
 
             # Estimate pose for each detected marker
             rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
-                corners, self.marker_length, self.camera_matrix, self.dist_coeffs
+                corners, self.marker_size, self.camera_matrix, self.dist_coeffs
             )
 
             for i in range(len(ids)):
@@ -89,7 +89,7 @@ class ArucoCompressedDetector:
                 self.marker_pose_pub.publish(marker_pose)
 
                 # Optional: draw coordinate axes on the image (not shown unless you use imshow)
-                # cv2.aruco.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[i][0], tvec, self.marker_length * 0.5)
+                # cv2.aruco.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[i][0], tvec, self.marker_size * 0.5)
 
         else:
             rospy.loginfo("[INFO] No markers detected.")
