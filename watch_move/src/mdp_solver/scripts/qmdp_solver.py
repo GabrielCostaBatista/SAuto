@@ -11,7 +11,7 @@ CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
 LINEAR_SPEED  = 0.2       # m/s
 ANGULAR_SPEED = math.pi/2 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
-TURN_TIME_90  = 0#(math.pi/2) / ANGULAR_SPEED
+TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
 MOTOR_PWM     = 0#10       # wheel PWM
 
 # Hardware
@@ -171,7 +171,7 @@ def main():
         rospy.loginfo("Believed pos = %s → waypoint %s",
                       controller.get_believed_position(), waypoint)
         rospy.loginfo("Executing action = %s", actions[0])
-        update_grid_probabilities()
+        update_grid_probabilities
         
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
@@ -182,6 +182,7 @@ def main():
             believed_position = controller.get_believed_position()
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
+            waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
             marker_exists = False
@@ -194,6 +195,7 @@ def main():
             coord = send_action(a_idx)
             controller.predict_belief(a_idx)
             believed_path.append(controller.get_believed_position())
+            waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
 
