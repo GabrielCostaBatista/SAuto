@@ -49,7 +49,7 @@ grid = [
 start, goal = (1,1), (7,20)
 checkpoints = [(1,6,0), (19,5,3), (17,13,0), (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
-marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
+marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
 
 # Strip orientation for the solver
@@ -172,11 +172,11 @@ def main():
     pose_array = PoseArray()
     pose_array.header.stamp    = rospy.Time.now()
     pose_array.header.frame_id = "map"
-    ori_offsets = {0:(1,0.5),1:(0.5,0),2:(0,0.5),3:(0.5,1)}
-    for r,c,ori in checkpoints:
+
+    for x, y, ori in checkpoints:
         pose = PoseStamped().pose
-        pose.position.x = c + marker_orientation_dictionary[ori][0]
-        pose.position.y = r + marker_orientation_dictionary[ori][1]
+        pose.position.x = x + marker_orientation_dictionary[ori][0]
+        pose.position.y = y + marker_orientation_dictionary[ori][1]
         pose.position.z = ori
         pose.orientation.w = 1.0
         pose_array.poses.append(pose)
