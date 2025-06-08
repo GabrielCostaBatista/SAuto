@@ -19,6 +19,9 @@ Ab  = AlphaBot()
 pwm = PCA9685(0x40)
 pwm.setPWMFreq(50)
 
+global wait_variable
+wait_variable = True 
+
 # Maze and checkpoints
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -83,7 +86,7 @@ new_belief_updater = None
 def send_action(a_idx):
     global heading
     action = controller.mdp.actions[a_idx]
-
+    wait_variable = True
     # 1) rotate to desired heading
     desired = {'right':0,'up':1,'left':2,'down':3}[action]
     diff = (desired - heading) % 4
@@ -118,6 +121,8 @@ def send_action(a_idx):
         # if we hit a wall, stay in place
         rospy.logwarn("Bumped into wall at %s, staying in place", bp)
         return bp
+    wait_variable = False
+        
     return (bp[0]+dr, bp[1]+dc)
 
 def detect_checkpoint(coord):
@@ -137,27 +142,27 @@ def pick_waypoint():
     return maze.goal
 
 def update_grid_probabilities(grid_probabilities):
-    global marker_exists, new_belief_updater
-    belief_updater = length_belief.copy()
-    new_belief_updater = np.zeros(len(length_belief), dtype=float)
-    for idx, cell in enumerate(grid_probabilities.points):
-        row = cell.x
-        column = cell.y
-        probability = cell.z
-        if (int(row), int(column)) in belief_updater:
-            belief_updater[(int(row), int(column))] = probability
-    counter= 0
-    for coordinate, value in belief_updater.items():
-        new_belief_updater[counter] = value
-        counter += 1
-        rospy.loginfo("batata")
+    if not wait_variable:
+        global marker_exists, new_belief_updater
+        belief_updater = length_belief.copy()
+        new_belief_updater = np.zeros(len(length_belief), dtype=float)
+        for idx, cell in enumerate(grid_probabilities.points):
+            row = cell.x
+            column = cell.y
+            probability = cell.z
+            if (int(row), int(column)) in belief_updater:
+                belief_updater[(int(row), int(column))] = probability
+        counter= 0
+        for coordinate, value in belief_updater.items():
+            new_belief_updater[counter] = value
+            counter += 1
 
-    if np.sum(new_belief_updater) == 0.0:
-        rospy.logwarn("No valid belief updater found, using uniform distribution")
-        new_belief_updater = np.ones(len(length_belief), dtype=float)
-    new_belief_updater /= np.sum(new_belief_updater)
-    
-    marker_exists = True
+        if np.sum(new_belief_updater) == 0.0:
+            rospy.logwarn("No valid belief updater found, using uniform distribution")
+            new_belief_updater = np.ones(len(length_belief), dtype=float)
+        new_belief_updater /= np.sum(new_belief_updater)
+        
+        marker_exists = True
 
 
 def main():
