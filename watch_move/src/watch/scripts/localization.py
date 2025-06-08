@@ -11,6 +11,9 @@ from shapely.ops import unary_union
 def annular_sector(center, r_inner, r_outer, angle_start, angle_end, num_points=100):
     """Create a shapely Polygon representing an annular sector."""
     cx, cy = center
+    # Handle angle wrapping if angle_end < angle_start
+    if angle_end < angle_start:
+        angle_end += 360
     angles = np.linspace(np.radians(angle_start), np.radians(angle_end), num_points)
     outer = [(cx + r_outer*np.cos(a), cy + r_outer*np.sin(a)) for a in angles]
     inner = [(cx + r_inner*np.cos(a), cy + r_inner*np.sin(a)) for a in angles[::-1]]
@@ -189,8 +192,8 @@ class RobotLocalizer:
             elif global_marker_pos[2] == 3:
                 x_max = global_marker_pos[0]
 
-            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 2) % 4) * 90, angle_end = ((global_marker_pos[2] % 4) * 90))
-
+            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 2) % 4) * 90, angle_end = ((global_marker_pos[2]) % 4) * 90)
+            
             # Create Polygon message to publish probabilities
             probability_map = Polygon()
 
