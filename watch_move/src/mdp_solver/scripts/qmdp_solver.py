@@ -150,6 +150,7 @@ def update_grid_probabilities(grid_probabilities):
     for coordinate, value in belief_updater.items():
         new_belief_updater[counter] = value
         counter += 1
+        rospy.loginfo("batata")
 
     if np.sum(new_belief_updater) == 0.0:
         rospy.logwarn("No valid belief updater found, using uniform distribution")
