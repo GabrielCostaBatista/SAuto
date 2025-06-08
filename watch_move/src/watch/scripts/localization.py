@@ -30,10 +30,9 @@ RADIUS_N_STD_DEV = rospy.get_param('~radius_n_std_dev', 2)
 # Get number of frames to average from ROS parameter (default 10)
 NUM_FRAMES_TO_AVERAGE = rospy.get_param('~num_frames_to_average', 10)
 
-global distance 
-
-# Initialize distances list for averaging
-distances = {}
+# Minimum distance error to consider
+MEASUREMENT_ERROR = 0.010 # meters
+MIN_DISTANCE_ERROR = MEASUREMENT_ERROR / CELL_SIZE  # in cell units, e.g. 0.010m / 0.25m = 0.04 cells
 
 
 class RobotLocalizer:
@@ -46,8 +45,8 @@ class RobotLocalizer:
         # Data storage
         self.global_markers = {}  # marker_id -> (x, y, orientation) in world coordinates
         self.protected_marker_positions = {}  # marker_id -> (x, y) for protected markers
-        self.robot_observations = {}  # marker_id -> (x, y, z) robot's observation of marker
-        self.distance = 0.0
+        # self.robot_observations = {}  # marker_id -> (x, y, z) robot's observation of marker
+        self.distances = {}  # marker_id -> list of [distance, timestamp] pairs
         
         # Initialize protected marker positions (you can modify these as needed)
         # For now, setting some default positions - you should update these with actual positions
@@ -96,31 +95,34 @@ class RobotLocalizer:
                 return
 
             # Store robot's observation of this marker
-            self.robot_observations[marker_id] = (
-                 msg.pose.position.x,
-                 msg.pose.position.y, 
-                 msg.pose.position.z
-            )
+            # self.robot_observations[marker_id] = (
+            #      msg.pose.position.x,
+            #      msg.pose.position.y, 
+            #      msg.pose.position.z
+            # )
             timestamp = msg.header.stamp
 
             # Compute distance for grid probabilities
-            self.distance = math.sqrt((msg.pose.position.x/CELL_SIZE)**2 + (msg.pose.position.z/CELL_SIZE)**2)
+            x_cell_normalized = msg.pose.position.x / CELL_SIZE
+            z_cell_normalized = msg.pose.position.z / CELL_SIZE
 
-            if marker_id in distances and distances[marker_id]:
-                last_ts = distances[marker_id][-1][1]
-                if timestamp - last_ts > rospy.Duration(1.0):
+            distance = math.sqrt(x_cell_normalized * x_cell_normalized + z_cell_normalized * z_cell_normalized)
+
+            if marker_id in self.distances and self.distances[marker_id]:
+                last_ts = self.distances[marker_id][-1][1]
+                if timestamp - last_ts > rospy.Duration(1.0) and len(self.distances[marker_id]) < NUM_FRAMES_TO_AVERAGE:
                     # Reset distances if last timestamp is too old
-                    distances[marker_id] = []
-                    
-            if marker_id not in distances:
-                distances[marker_id] = []
-            
-            distances[marker_id].append([self.distance, timestamp])
+                    self.distances[marker_id] = []
 
-            if len(distances[marker_id]) == NUM_FRAMES_TO_AVERAGE:
+            if marker_id not in self.distances:
+                self.distances[marker_id] = []
+
+            self.distances[marker_id].append([distance, timestamp])
+
+            if len(self.distances[marker_id]) == NUM_FRAMES_TO_AVERAGE:
                 # Compute grid probabilities based on this marker observation
                 self.grid_probabilities(marker_id)
-                distances[marker_id].clear()  # Reset distances after processing
+                self.distances[marker_id].clear()  # Reset distances after processing
 
         except (ValueError, IndexError) as e:
             rospy.logerr(f"Error parsing marker ID: {e}")
@@ -146,74 +148,68 @@ class RobotLocalizer:
         }
     
     
-    def grid_probabilities(self, observed_marker_id, distance_std_dev=0.025):
+    def grid_probabilities(self, observed_marker_id):
         """
         Compute robot pose based on observed marker ID and distance
         
         Args:
             observed_marker_id: ID of the observed marker
-            distance_std_dev: Distance standard deviation to the marker in cells
         
         Output:
-        Publishes a Polygon message where each Point32 contains:
-        - x: row coordinate
-        - y: column coordinate  
-        - z: probability of being in that cell
+            Publishes a Polygon message where each Point32 contains:
+                - x: row coordinate
+                - y: column coordinate  
+                - z: probability of being in that cell
         """
+
         # Check if marker is in global markers and is not a protected marker
         if observed_marker_id in self.global_markers:
             global_marker_pos = self.global_markers[observed_marker_id]
 
             # Get robot's observation of this marker
-            if observed_marker_id not in self.robot_observations:
-                rospy.logwarn(f"No robot observation found for marker {observed_marker_id}")
+            if observed_marker_id not in self.distances or not self.distances[observed_marker_id]:
+                rospy.logwarn(f"No distances found for marker {observed_marker_id}")
                 return
 
-            i_min = int(global_marker_pos[0] - self.distance)
-            i_max = int(global_marker_pos[0] + self.distance)
-            j_min = int(global_marker_pos[1] - self.distance)
-            j_max = int(global_marker_pos[1] + self.distance)
+            marker_distances = [pair[0] for pair in self.distances[observed_marker_id]]
+            distance = np.mean(marker_distances)
+            distance_error = max(np.std(marker_distances), MIN_DISTANCE_ERROR) * RADIUS_N_STD_DEV
 
-            print(f"i_min: {i_min}, i_max: {i_max}, j_min: {j_min}, j_max: {j_max}")
+            x_min = int(global_marker_pos[0] - distance)
+            x_max = int(global_marker_pos[0] + distance)
+            y_min = int(global_marker_pos[1] - distance)
+            y_max = int(global_marker_pos[1] + distance)
 
             if global_marker_pos[2] == 0:
-                i_max = global_marker_pos[0]
+                y_max = global_marker_pos[1]
             elif global_marker_pos[2] == 1:
-                j_min = global_marker_pos[1]
+                x_min = global_marker_pos[0]
             elif global_marker_pos[2] == 2:
-                i_min = global_marker_pos[0]
+                y_min = global_marker_pos[1]
             elif global_marker_pos[2] == 3:
-                j_max = global_marker_pos[1] 
+                x_max = global_marker_pos[0]
 
-            # Extract only the distance values for this marker
-            marker_distances = [pair[0] for pair in distances[observed_marker_id]]
-            self.distance = np.mean(marker_distances)
-            distance_error = np.std(marker_distances) * RADIUS_N_STD_DEV
-
-            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner=self.distance - distance_error, r_outer=self.distance + distance_error, angle_start=0, angle_end=180)
-            total_sector_area = sector.area if sector.area > 0 else 1  # avoid zero division
+            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 2) % 4) * 90, angle_end = ((global_marker_pos[2] % 4) * 90))
 
             # Create Polygon message to publish probabilities
             probability_map = Polygon()
 
-            print(f"i_min: {i_min}, i_max: {i_max}, j_min: {j_min}, j_max: {j_max}")
-            
-            for i in np.linspace(i_min, i_max, num = i_max - i_min +1):
-                if i < 0:
+            for x in np.linspace(x_min, x_max, num = x_max - x_min + 1):
+                if x < 0:
                     continue
-                for j in np.linspace(j_min, j_max, num = j_max - j_min +1):
-                    if j < 0:
+                for y in np.linspace(y_min, y_max, num = y_max - y_min + 1):
+                    if y < 0:
                         continue
-                    cell_box = box(i, j, i+1, j+1)
+                    cell_box = box(x, y, x+1, y+1)
                     intersection = cell_box.intersection(sector)
                     intersection_area = intersection.area if not intersection.is_empty else 0
-                    probability = intersection_area / total_sector_area
-                    #probability_map[i, j] = probability
+                    probability = intersection_area / sector.area
+
                     if probability > 0:  # Only add points with non-zero probability
-                        print(f"Adding point ({i}, {j}) with probability {probability:.4f}")
+                        print(f"Adding point ({x}, {y}) with probability {probability:.4f}")
                         point = Point32()
-                        point.x = i
-                        point.y = j
+                        point.x = x
+                        point.y = y
                         point.z = probability
                         probability_map.points.append(point)
 
@@ -221,6 +217,7 @@ class RobotLocalizer:
 
         else:
             rospy.logwarn(f"Marker {observed_marker_id} not found in global marker database.")
+
 
     def run(self):
         """Main loop - grid probabilities are published in real-time via callbacks"""
