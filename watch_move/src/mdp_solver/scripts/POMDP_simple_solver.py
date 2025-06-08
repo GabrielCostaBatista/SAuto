@@ -108,6 +108,14 @@ class MDP:
         self.R = np.full((self.n, len(self.actions), self.n), self.step_cost)
 
         directions = {'up':(-1,0), 'down':(1,0), 'left':(0,-1), 'right':(0,1)}
+        # Define which directions are "sides" for each action (exclude opposite)
+        side_actions = {
+            'up': ['left', 'right'],
+            'down': ['left', 'right'], 
+            'left': ['up', 'down'],
+            'right': ['up', 'down']
+        }
+        
         for s in range(self.n):
             if s == maze.goal_idx:
                 self.P[s,:,s] = 1.0
@@ -115,18 +123,26 @@ class MDP:
             ci = maze.state_to_coord(s)
             free_neigh = list(maze.neighbors(ci))
             for a_idx, a in enumerate(self.actions):
+                sides = side_actions[a]
                 for b in self.actions:
-                    prob = (1 - self.slip) + self.slip/4 if b == a else self.slip/4
-                    di, dj = directions[b]
-                    ni, nj = ci[0]+di, ci[1]+dj
-                    if (ni, nj) in maze._idx_map:
-                        sp = maze.coord_to_state((ni, nj))
-                        self.P[s,a_idx,sp] += prob
-                        if sp == maze.goal_idx:
-                            self.R[s,a_idx,sp] = self.goal_reward
+                    if b == a:
+                        prob = 1 - self.slip  # intended direction
+                    elif b in sides:
+                        prob = self.slip / 2  # slip to sides only
                     else:
-                        # redistribute to free neighbors if bump into wall
-                        if free_neigh:
+                        prob = 0  # no slip backwards or staying
+                    
+                    if prob > 0:
+                        di, dj = directions[b]
+                        ni, nj = ci[0]+di, ci[1]+dj
+                        if (ni, nj) in maze._idx_map:
+                            sp = maze.coord_to_state((ni, nj))
+                            self.P[s,a_idx,sp] += prob
+                            if sp == maze.goal_idx:
+                                self.R[s,a_idx,sp] = self.goal_reward
+                        else:
+                            # redistribute to free neighbors if bump into wall
+                            if free_neigh:
                             for nbr in free_neigh:
                                 spn = maze.coord_to_state(nbr)
                                 self.P[s,a_idx,spn] += prob/len(free_neigh)
