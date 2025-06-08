@@ -235,6 +235,7 @@ def main():
         if marker_exists == True:
             idx = maze.coord_to_state(coord)
             controller.relocalise(new_belief_updater)
+
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             believed_position = controller.get_believed_position()
@@ -242,9 +243,9 @@ def main():
             believed_path.append(believed_position)
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
+
             marker_exists = False
-            rospy.sleep(2.0)
-            continue
+            rospy.sleep(1.0)
 
         # otherwise predict belief forward
         else:
@@ -254,6 +255,7 @@ def main():
             believed_path.append(controller.get_believed_position())
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
+            rospy.sleep(1.0)
 
         
     rospy.loginfo("Arrived at goal %s", goal)
