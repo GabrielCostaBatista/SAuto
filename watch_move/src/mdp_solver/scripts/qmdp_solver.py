@@ -12,7 +12,10 @@ LINEAR_SPEED  = 0.1       # m/s
 ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
-MOTOR_PWM     = 12       # wheel PWM
+MOTOR_PWM     = 10       # wheel PWM
+CORRECTION_FACTOR = 1.00 # correction factor for motor PWM to match speed
+
+current_orientation = 0  # 0=east,1=north,2=west,3=south
 
 # Hardware
 Ab  = AlphaBot()
@@ -84,27 +87,31 @@ new_belief_updater = None
 
 
 def send_action(a_idx):
-    global heading
+    global heading, current_orientation
     action = controller.mdp.actions[a_idx]
     wait_variable = True
     # 1) rotate to desired heading
     desired = {'right':0,'up':1,'left':2,'down':3}[action]
     diff = (desired - heading) % 4
+
     if diff == 1:
-        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
+        current_orientation = (current_orientation + 1) % 4
+        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 2:
-        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
+        current_orientation = (current_orientation + 2) % 4
+        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
         Ab.left(); rospy.sleep(TURN_TIME_90)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 3:
-        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
+        current_orientation = (current_orientation - 1) % 4
+        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
         Ab.right(); rospy.sleep(TURN_TIME_90); Ab.stop()
     heading = desired
 
     # 2) pause, then move forward one cell
     rospy.sleep(1.0)
-    Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
+    Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
     Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
 
     # 3) pause before next decision
