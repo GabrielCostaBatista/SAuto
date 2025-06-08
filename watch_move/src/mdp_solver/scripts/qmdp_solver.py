@@ -142,20 +142,20 @@ def pick_waypoint():
     return maze.goal
 
 def update_grid_probabilities(grid_probabilities):
-    global marker_exists, new_belief_updater
-    belief_updater = length_belief.copy()
-    new_belief_updater = np.zeros(len(length_belief), dtype=float)
-    print(grid_probabilities)
-    for idx, cell in enumerate(grid_probabilities.points):
-        row = cell.x
-        column = cell.y
-        probability = cell.z
-        if (int(row), int(column)) in belief_updater:
-            belief_updater[(int(row), int(column))] = probability
-    counter= 0
-    for coordinate, value in belief_updater.items():
-        new_belief_updater[counter] = value
-        counter += 1
+    if not wait_variable:
+        global marker_exists, new_belief_updater
+        belief_updater = length_belief.copy()
+        new_belief_updater = np.zeros(len(length_belief), dtype=float)
+        for idx, cell in enumerate(grid_probabilities.points):
+            row = cell.x
+            column = cell.y
+            probability = cell.z
+            if (int(row), int(column)) in belief_updater:
+                belief_updater[(int(row), int(column))] = probability
+        counter= 0
+        for coordinate, value in belief_updater.items():
+            new_belief_updater[counter] = value
+            counter += 1
 
         if np.sum(new_belief_updater) == 0.0:
             rospy.logwarn("No valid belief updater found, using uniform distribution")
