@@ -116,7 +116,7 @@ class MDP:
             free_neigh = list(maze.neighbors(ci))
             for a_idx, a in enumerate(self.actions):
                 for b in self.actions:
-                    prob = (1 - self.slip) if b == a else self.slip/3
+                    prob = (1 - self.slip) + self.slip/4 if b == a else self.slip/4
                     di, dj = directions[b]
                     ni, nj = ci[0]+di, ci[1]+dj
                     if (ni, nj) in maze._idx_map:
