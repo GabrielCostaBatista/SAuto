@@ -89,7 +89,7 @@ new_belief_updater = None
 
 
 def send_action(a_idx):
-    global heading, current_orientation
+    global heading, current_orientation, wait_variable
     action = controller.mdp.actions[a_idx]
     wait_variable = True
     print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
