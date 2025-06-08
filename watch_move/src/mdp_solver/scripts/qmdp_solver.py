@@ -49,7 +49,7 @@ grid = [
 start, goal = (1,1), (7,20)
 checkpoints = [(1,6,0), (19,5,3), (17,13,0), (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
-marker_orientation_dictionary = {0: (1, 0.5), 1: (0.5, 0), 2: (0, 0.5), 3: (0.5, 1)} # Orientation to (x, y) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
+marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
 
 # Strip orientation for the solver
@@ -114,6 +114,10 @@ def send_action(a_idx):
     bp = controller.get_believed_position()
     dr, dc = {'up':(-1,0),'down':(1,0),
                 'left':(0,-1),'right':(0,1)}[action]
+    if grid[bp[0]+dr][bp[1]+dc] == 1:
+        # if we hit a wall, stay in place
+        rospy.logwarn("Bumped into wall at %s, staying in place", bp)
+        return bp
     return (bp[0]+dr, bp[1]+dc)
 
 def detect_checkpoint(coord):
@@ -136,16 +140,21 @@ def update_grid_probabilities(grid_probabilities):
     global marker_exists, new_belief_updater
     belief_updater = length_belief.copy()
     new_belief_updater = np.zeros(len(length_belief), dtype=float)
+    print(grid_probabilities)
     for idx, cell in enumerate(grid_probabilities.points):
-        x = cell.x
-        y = cell.y
+        row = cell.x
+        column = cell.y
         probability = cell.z
-        if (int(x), int(y)) in belief_updater:
-            belief_updater[(int(x), int(y))] = probability
+        if (int(row), int(column)) in belief_updater:
+            belief_updater[(int(row), int(column))] = probability
     counter= 0
     for coordinate, value in belief_updater.items():
         new_belief_updater[counter] = value
         counter += 1
+
+    if np.sum(new_belief_updater) == 0.0:
+        rospy.logwarn("No valid belief updater found, using uniform distribution")
+        new_belief_updater = np.ones(len(length_belief), dtype=float)
     new_belief_updater /= np.sum(new_belief_updater)
     
     marker_exists = True
@@ -164,11 +173,11 @@ def main():
     pose_array = PoseArray()
     pose_array.header.stamp    = rospy.Time.now()
     pose_array.header.frame_id = "map"
-    ori_offsets = {0:(1,0.5),1:(0.5,0),2:(0,0.5),3:(0.5,1)}
-    for r,c,ori in checkpoints:
+
+    for x, y, ori in checkpoints:
         pose = PoseStamped().pose
-        pose.position.x = c + marker_orientation_dictionary[ori][0]
-        pose.position.y = r + marker_orientation_dictionary[ori][1]
+        pose.position.x = x + marker_orientation_dictionary[ori][0]
+        pose.position.y = y + marker_orientation_dictionary[ori][1]
         pose.position.z = ori
         pose.orientation.w = 1.0
         pose_array.poses.append(pose)
