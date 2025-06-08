@@ -15,6 +15,8 @@ TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED * 0.9
 MOTOR_PWM     = 12       # wheel PWM
 CORRECTION_FACTOR = 1.02 # correction factor for motor PWM to match speed
 
+NUM_PROTECTED_MARKERS = 2
+
 current_orientation = 0  # 0=east,1=north,2=west,3=south
 current_marker = 0  # 0=right side of the square, 1=above the square, 2=left side of the square, 3=below the square
 current_z = 0.0  # z coordinate of the current marker
@@ -92,7 +94,6 @@ def send_action(a_idx):
     global heading, current_orientation, wait_variable
     action = controller.mdp.actions[a_idx]
     wait_variable = True
-    print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     # 1) rotate to desired heading
     desired = {'right':0,'up':1,'left':2,'down':3}[action]
     diff = (desired - heading) % 4
@@ -122,7 +123,7 @@ def send_action(a_idx):
     rospy.sleep(2.0)
 
     wait_variable = False
-    print(f"[INFOOOOO] Moving to {bp[0]+dr}, {bp[1]+dc} from {bp}")
+    print(f"[INFO] Wait variable set to {wait_variable}")
 
     # return the *actual* coordinate (for checkpoint/goal checks)
     # here we assume perfect odometry: map heading+movement to grid:
@@ -154,13 +155,12 @@ def pick_waypoint():
     return maze.goal
 
 def update_grid_probabilities(grid_probabilities):
-    print("[INFOOOOO] Wait:", wait_variable)
+    print("[INFO] Wait:", wait_variable)
 
     if not wait_variable:
-        print("[INFOOOOO] Received grid probabilities")
         global marker_exists, new_belief_updater, current_marker, current_z
         current_marker = int(grid_probabilities.header.frame_id)
-        print(f"[INFOOOOOOO] Received grid probabilities for marker {current_marker}")
+        print(f"[INFO] Received grid probabilities for marker {current_marker}")
         # Extract z position from timestamp (stored as nanoseconds)
         current_z = grid_probabilities.header.stamp.nsecs / 1e9
         belief_updater = length_belief.copy()
@@ -185,16 +185,17 @@ def update_grid_probabilities(grid_probabilities):
 
 
 def angle_correction(believed_position):
-    print("[INFOOOOO] I am in!")
     global current_orientation, current_marker, current_z
 
-    marker_x = checkpoints[current_marker][0]
-    marker_y = checkpoints[current_marker][1]
-    marker_ori = checkpoints[current_marker][2]
+    marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0]
+    marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1]
+    marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
 
     distance = math.sqrt((believed_position[0] - marker_x) ** 2 + (believed_position[1] - marker_y) ** 2)
-    x_global = believed_position[0] - marker_x
-    
+    x_global = believed_position[0] - marker_x - 0.5
+
+    print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
+
     theta_1 = math.acos(current_z / distance) if distance != 0 else 0
     theta_2 = math.acos(x_global / distance) if distance != 0 else 0
 
@@ -202,21 +203,25 @@ def angle_correction(believed_position):
 
     # Convert theta to degrees
     theta = math.degrees(theta)
+    theta = ((current_orientation - marker_ori) % 4) * 90 + theta
 
-    print(f"Theta correction: {theta} degrees, current orientation: {current_orientation}, marker orientation: {marker_ori}")
+    if theta > 180:
+        theta -= 360
+    elif theta < -180:
+        theta += 360
 
-    if abs(theta) > 1:
+    print(f"Theta correction: {theta} degrees, current orientation: {current_orientation}, marker orientation: {marker_ori}. Theta1: {math.degrees(theta_1)}, Theta2: {math.degrees(theta_2)}")
+
+    if abs(theta) > 5:
         rospy.logwarn("Angle correction needed: %f degrees", theta)
         if theta > 0:
             # Rotate right
             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
             Ab.right(); rospy.sleep(TURN_TIME_90 * (theta / 90)); Ab.stop()
-            current_orientation = (current_orientation + 1) % 4
         else:
             # Rotate left
             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
             Ab.left(); rospy.sleep(TURN_TIME_90 * (-theta / 90)); Ab.stop()
-            current_orientation = (current_orientation - 1) % 4 
 
 
 def main():
