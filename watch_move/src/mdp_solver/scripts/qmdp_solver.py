@@ -12,12 +12,18 @@ LINEAR_SPEED  = 0.1       # m/s
 ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
-MOTOR_PWM     = 12       # wheel PWM
+MOTOR_PWM     = 10       # wheel PWM
+CORRECTION_FACTOR = 1.00 # correction factor for motor PWM to match speed
+
+current_orientation = 0  # 0=east,1=north,2=west,3=south
 
 # Hardware
 Ab  = AlphaBot()
 pwm = PCA9685(0x40)
 pwm.setPWMFreq(50)
+
+global wait_variable
+wait_variable = True 
 
 # Maze and checkpoints
 grid = [
@@ -81,27 +87,31 @@ new_belief_updater = None
 
 
 def send_action(a_idx):
-    global heading
+    global heading, current_orientation
     action = controller.mdp.actions[a_idx]
-
+    wait_variable = True
     # 1) rotate to desired heading
     desired = {'right':0,'up':1,'left':2,'down':3}[action]
     diff = (desired - heading) % 4
+
     if diff == 1:
-        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
+        current_orientation = (current_orientation + 1) % 4
+        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 2:
-        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
+        current_orientation = (current_orientation + 2) % 4
+        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
         Ab.left(); rospy.sleep(TURN_TIME_90)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 3:
-        Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
+        current_orientation = (current_orientation - 1) % 4
+        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
         Ab.right(); rospy.sleep(TURN_TIME_90); Ab.stop()
     heading = desired
 
     # 2) pause, then move forward one cell
     rospy.sleep(1.0)
-    Ab.setPWMA(MOTOR_PWM*1.09); Ab.setPWMB(MOTOR_PWM)
+    Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
     Ab.forward(); rospy.sleep(CELL_TIME); Ab.stop()
 
     # 3) pause before next decision
@@ -118,6 +128,8 @@ def send_action(a_idx):
         # if we hit a wall, stay in place
         rospy.logwarn("Bumped into wall at %s, staying in place", bp)
         return bp
+    wait_variable = False
+        
     return (bp[0]+dr, bp[1]+dc)
 
 def detect_checkpoint(coord):
@@ -137,27 +149,27 @@ def pick_waypoint():
     return maze.goal
 
 def update_grid_probabilities(grid_probabilities):
-    global marker_exists, new_belief_updater
-    belief_updater = length_belief.copy()
-    new_belief_updater = np.zeros(len(length_belief), dtype=float)
-    print(grid_probabilities)
-    for idx, cell in enumerate(grid_probabilities.points):
-        row = cell.x
-        column = cell.y
-        probability = cell.z
-        if (int(row), int(column)) in belief_updater:
-            belief_updater[(int(row), int(column))] = probability
-    counter= 0
-    for coordinate, value in belief_updater.items():
-        new_belief_updater[counter] = value
-        counter += 1
+    if not wait_variable:
+        global marker_exists, new_belief_updater
+        belief_updater = length_belief.copy()
+        new_belief_updater = np.zeros(len(length_belief), dtype=float)
+        for idx, cell in enumerate(grid_probabilities.points):
+            row = cell.x
+            column = cell.y
+            probability = cell.z
+            if (int(row), int(column)) in belief_updater:
+                belief_updater[(int(row), int(column))] = probability
+        counter= 0
+        for coordinate, value in belief_updater.items():
+            new_belief_updater[counter] = value
+            counter += 1
 
-    if np.sum(new_belief_updater) == 0.0:
-        rospy.logwarn("No valid belief updater found, using uniform distribution")
-        new_belief_updater = np.ones(len(length_belief), dtype=float)
-    new_belief_updater /= np.sum(new_belief_updater)
-    
-    marker_exists = True
+        if np.sum(new_belief_updater) == 0.0:
+            rospy.logwarn("No valid belief updater found, using uniform distribution")
+            new_belief_updater = np.ones(len(length_belief), dtype=float)
+        new_belief_updater /= np.sum(new_belief_updater)
+        
+        marker_exists = True
 
 
 def main():
