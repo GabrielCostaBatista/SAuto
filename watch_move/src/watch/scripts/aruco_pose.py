@@ -68,7 +68,7 @@ class ArucoCompressedDetector:
                 tvec = tvecs[i][0]  # Only need translation vector (position)
                 marker_id = ids[i][0]
                 
-                rospy.loginfo(f"[POSE] ID {marker_id} | Position: x={tvec[0]:.3f}, y={tvec[1]:.3f}, z={tvec[2]:.3f}")
+                # rospy.loginfo(f"[POSE] ID {marker_id} | Position: x={tvec[0]:.3f}, y={tvec[1]:.3f}, z={tvec[2]:.3f}")
 
                 # Publish marker pose with ID encoded in frame_id
                 marker_pose = PoseStamped()
@@ -91,8 +91,8 @@ class ArucoCompressedDetector:
                 # Optional: draw coordinate axes on the image (not shown unless you use imshow)
                 # cv2.aruco.drawAxis(cv_image, self.camera_matrix, self.dist_coeffs, rvecs[i][0], tvec, self.marker_size * 0.5)
 
-        else:
-            rospy.loginfo("[INFO] No markers detected.")
+        # else:
+            # rospy.loginfo("[INFO] No markers detected.")
 
 def calibrate_camera_angle():
     """
