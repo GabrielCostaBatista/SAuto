@@ -140,6 +140,7 @@ def update_grid_probabilities(grid_probabilities):
     global marker_exists, new_belief_updater
     belief_updater = length_belief.copy()
     new_belief_updater = np.zeros(len(length_belief), dtype=float)
+    print(grid_probabilities)
     for idx, cell in enumerate(grid_probabilities.points):
         row = cell.x
         column = cell.y
@@ -150,7 +151,6 @@ def update_grid_probabilities(grid_probabilities):
     for coordinate, value in belief_updater.items():
         new_belief_updater[counter] = value
         counter += 1
-        rospy.loginfo("batata")
 
     if np.sum(new_belief_updater) == 0.0:
         rospy.logwarn("No valid belief updater found, using uniform distribution")
