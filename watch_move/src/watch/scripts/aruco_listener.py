@@ -41,7 +41,7 @@ class ArucoListener:
             qw = msg.pose.orientation.w
             
             # Here you can add your custom logic based on the marker data
-            self.process_marker_data(marker_id, x, y, z)
+            # self.process_marker_data(marker_id, x, y, z)
             
         except ValueError as e:
             rospy.logerr(f"Error parsing marker ID from frame_id '{msg.header.frame_id}': {e}")
