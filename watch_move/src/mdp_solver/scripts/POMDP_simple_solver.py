@@ -143,14 +143,14 @@ class MDP:
                         else:
                             # redistribute to free neighbors if bump into wall
                             if free_neigh:
-                            for nbr in free_neigh:
-                                spn = maze.coord_to_state(nbr)
-                                self.P[s,a_idx,spn] += prob/len(free_neigh)
-                                if spn == maze.goal_idx:
-                                    self.R[s,a_idx,spn] = self.goal_reward
-                        else:
-                            # trapped: stay put
-                            self.P[s,a_idx,s] += prob
+                                for nbr in free_neigh:
+                                    spn = maze.coord_to_state(nbr)
+                                    self.P[s,a_idx,spn] += prob/len(free_neigh)
+                                    if spn == maze.goal_idx:
+                                        self.R[s,a_idx,spn] = self.goal_reward
+                            else:
+                                # trapped: stay put
+                                self.P[s,a_idx,s] += prob
 
         self.V = np.zeros(self.n)
         self.Q = np.zeros((self.n, len(self.actions)))
