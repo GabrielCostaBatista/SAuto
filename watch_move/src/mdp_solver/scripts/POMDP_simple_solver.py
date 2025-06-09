@@ -143,14 +143,14 @@ class MDP:
                         else:
                             # redistribute to free neighbors if bump into wall
                             if free_neigh:
-                            for nbr in free_neigh:
-                                spn = maze.coord_to_state(nbr)
-                                self.P[s,a_idx,spn] += prob/len(free_neigh)
-                                if spn == maze.goal_idx:
-                                    self.R[s,a_idx,spn] = self.goal_reward
-                        else:
-                            # trapped: stay put
-                            self.P[s,a_idx,s] += prob
+                                for nbr in free_neigh:
+                                    spn = maze.coord_to_state(nbr)
+                                    self.P[s,a_idx,spn] += prob/len(free_neigh)
+                                    if spn == maze.goal_idx:
+                                        self.R[s,a_idx,spn] = self.goal_reward
+                            else:
+                                # trapped: stay put
+                                self.P[s,a_idx,s] += prob
 
         self.V = np.zeros(self.n)
         self.Q = np.zeros((self.n, len(self.actions)))
@@ -192,6 +192,35 @@ class QMDPController:
 
     def predict_belief(self, action_idx):
         b_pred = self.belief @ self.mdp.P[:,action_idx,:]
+        b_pred = b_pred / b_pred.sum()
+        
+        # Add forward spreading in the direction of movement
+        spreading_factor = 0.15  # Controls how much spreading to add
+        action = self.mdp.actions[action_idx]
+        
+        # Create directional spreading kernel
+        forward_spread = np.zeros_like(b_pred)
+        directions = {'up':(-1,0), 'down':(1,0), 'left':(0,-1), 'right':(0,1)}
+        dr, dc = directions[action]
+        
+        # For each state with significant belief, spread to forward neighbors
+        for s in range(len(b_pred)):
+            if b_pred[s] > 0.01:  # Only spread from states with meaningful probability
+                coord = self.mdp.maze.state_to_coord(s)
+                # Try to spread 1-2 steps forward
+                for steps in [1, 2]:
+                    nr, nc = coord[0] + dr*steps, coord[1] + dc*steps
+                    if (nr, nc) in self.mdp.maze._idx_map:
+                        forward_s = self.mdp.maze.coord_to_state((nr, nc))
+                        # Spread decreases with distance
+                        forward_spread[forward_s] += b_pred[s] * (0.3 / steps)
+        
+        # Normalize forward spread
+        if forward_spread.sum() > 0:
+            forward_spread = forward_spread / forward_spread.sum()
+            # Mix predicted belief with forward spreading
+            b_pred = (1 - spreading_factor) * b_pred + spreading_factor * forward_spread
+        
         self.belief = b_pred / b_pred.sum()
 
     def relocalise(self, marker_matrix): 
