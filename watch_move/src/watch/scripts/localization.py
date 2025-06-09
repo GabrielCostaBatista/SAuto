@@ -2,7 +2,7 @@
 import rospy
 import numpy as np
 import math
-from geometry_msgs.msg import PoseStamped, PoseArray, Polygon, Point32
+from geometry_msgs.msg import PoseStamped, PoseArray, Polygon, Point32, PolygonStamped
 from std_msgs.msg import Header
 from shapely.geometry import box, Polygon as ShapelyPolygon
 from shapely.ops import unary_union
@@ -43,7 +43,7 @@ class RobotLocalizer:
         rospy.init_node('grid_probabilities_publisher', anonymous=True)
         
         # Publishers
-        self.grid_prob_pub = rospy.Publisher('global_locations/grid_probabilities', Polygon, queue_size=10)
+        self.grid_prob_pub = rospy.Publisher('global_locations/grid_probabilities', PolygonStamped, queue_size=10)
         
         # Data storage
         self.global_markers = {}  # marker_id -> (x, y, orientation) in world coordinates
@@ -120,7 +120,7 @@ class RobotLocalizer:
             if marker_id not in self.distances:
                 self.distances[marker_id] = []
 
-            self.distances[marker_id].append([distance, timestamp])
+            self.distances[marker_id].append([distance, timestamp, msg.pose.position.z])
 
             if len(self.distances[marker_id]) == NUM_FRAMES_TO_AVERAGE:
                 # Compute grid probabilities based on this marker observation
@@ -165,6 +165,8 @@ class RobotLocalizer:
                 - z: probability of being in that cell
         """
 
+        rospy.loginfo(f"[INFO] Computing grid probabilities for observed marker {observed_marker_id}")
+
         # Check if marker is in global markers and is not a protected marker
         if observed_marker_id in self.global_markers:
             global_marker_pos = self.global_markers[observed_marker_id]
@@ -192,12 +194,14 @@ class RobotLocalizer:
             elif global_marker_pos[2] == 3:
                 x_max = global_marker_pos[0]
 
-            print(f"Distance_error: {distance_error:.4f} m")
-
             sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 2) % 4) * 90, angle_end = ((global_marker_pos[2]) % 4) * 90)
 
             # Create Polygon message to publish probabilities
-            probability_map = Polygon()
+            probability_map = PolygonStamped()
+            probability_map.header = Header()
+            probability_map.header.frame_id = str(observed_marker_id)
+            mean_z = np.mean([pair[2] for pair in self.distances[observed_marker_id]])
+            probability_map.header.stamp = rospy.Time(secs=0, nsecs=int(mean_z * 1e9))
 
             for x in np.linspace(x_min, x_max, num = x_max - x_min + 1):
                 if x < 0:
@@ -211,12 +215,11 @@ class RobotLocalizer:
                     probability = intersection_area / sector.area
 
                     if probability > 0:  # Only add points with non-zero probability
-                        print(f"Adding point ({x}, {y}) with probability {probability:.4f}")
                         point = Point32()
                         point.x = x
                         point.y = y
                         point.z = probability
-                        probability_map.points.append(point)
+                        probability_map.polygon.points.append(point)
 
             self.grid_prob_pub.publish(probability_map)
 
