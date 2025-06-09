@@ -308,7 +308,11 @@ def main():
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             controller.predict_belief(a_idx)
-            believed_path.append(controller.get_believed_position())
+            
+            # Update coord to match the updated belief position
+            coord = controller.get_believed_position()
+            believed_path.append(coord)
+            
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
             rospy.sleep(1.0)
