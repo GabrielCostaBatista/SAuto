@@ -7,13 +7,14 @@ from alphabot_driver.PCA9685 import PCA9685
 from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
-CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
+CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
 LINEAR_SPEED  = 0.1       # m/s
 ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED * 0.9
-MOTOR_PWM     = 12       # wheel PWM
-CORRECTION_FACTOR = 1.02 # correction factor for motor PWM to match speed
+#MOTOR_PWM     = 0       # wheel PWM
+MOTOR_PWM     = 9.5       # wheel PWM
+CORRECTION_FACTOR = 1.07 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2
 
@@ -227,7 +228,12 @@ def angle_correction(believed_position):
 def main():
     global marker_exists, new_belief_updater
     rospy.init_node('qmdp_controller')
-
+    
+    # Open files for writing
+    belief_file = open("belief_positions.txt", "w")
+    most_likely_file = open("most_likely_positions.txt", "w")
+    actions_file = open("actions_taken.txt", "w")
+    
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
     # Publish checkpoint poses
@@ -280,6 +286,10 @@ def main():
 
     while believed_position != goal:
         # log current belief and planned target
+        belief_list = controller.belief.flatten().tolist()
+        belief_file.write(f"{belief_list}\n")
+        most_likely_file.write(f"{controller.get_believed_position()}\n")
+        actions_file.write(f"{actions[0]}\n")
         rospy.loginfo("Believed pos = %s → waypoint %s",
                       controller.get_believed_position(), waypoint)
         rospy.loginfo("Executing action = %s", actions[0])
@@ -289,6 +299,8 @@ def main():
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
             idx = maze.coord_to_state(coord)
+            rospy.loginfo("Previous belief: %s", controller.belief)
+            rospy.loginfo("Merker belief: %s", new_belief_updater)
             controller.relocalise(new_belief_updater)
             believed_position = controller.get_believed_position()
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
@@ -308,12 +320,8 @@ def main():
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             controller.predict_belief(a_idx)
-
-
-            # Update coord to match the updated belief position
-            coord = controller.get_believed_position()
-            believed_path.append(coord)
-            
+            believed_path.append(controller.get_believed_position())
+            waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
             rospy.sleep(1.0)
@@ -322,6 +330,9 @@ def main():
         
     rospy.loginfo("Arrived at goal %s", goal)
     rospy.loginfo("Final believed path: %s", believed_path)
+    belief_file.close()
+    most_likely_file.close()
+    actions_file.close()
     shutdown()
 
 if __name__ == '__main__':
