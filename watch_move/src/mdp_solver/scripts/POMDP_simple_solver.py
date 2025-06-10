@@ -181,6 +181,10 @@ class QMDPController:
         self.belief = None
         self.entropy_thresh = entropy_thresh
 
+    def belief_entropy(self):
+        p = self.belief
+        return -np.sum(p[p>0] * np.log(p[p>0]))
+
     def init_belief(self):
         b = np.zeros(self.mdp.n)
         b[self.mdp.maze.start_idx] = 1.0

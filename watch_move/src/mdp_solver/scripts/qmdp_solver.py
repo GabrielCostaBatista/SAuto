@@ -14,7 +14,7 @@ CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED * 0.9
 #MOTOR_PWM     = 0       # wheel PWM
 MOTOR_PWM     = 9.5       # wheel PWM
-CORRECTION_FACTOR = 1.07 # correction factor for motor PWM to match speed
+CORRECTION_FACTOR = 1.12 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2
 
@@ -142,6 +142,19 @@ def pick_waypoint():
         return cps_sorted[0]
     return maze.goal
 
+def belief_to_grid(belief):
+    belief_grid = np.zeros((len(grid), len(grid[0])), dtype=float)
+    lcounter = 0
+    for i in range(len(grid)):
+        for j in range(len(grid[0])):
+            if grid[i][j] == 0:
+                belief_grid[i][j] = belief[lcounter]
+                lcounter += 1
+            else:
+                belief_grid[i][j] = -1.0  # Mark walls with -1
+                
+    return belief_grid
+
 def update_grid_probabilities(grid_probabilities):
     print("[INFO] Wait:", wait_variable)
 
@@ -171,46 +184,46 @@ def update_grid_probabilities(grid_probabilities):
         
         marker_exists = True
 
-
-def angle_correction(believed_position):
-    global current_orientation, current_marker, current_z
-
-    marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0]
-    marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1]
-    marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
-
-    distance = math.sqrt((believed_position[0] - marker_x) ** 2 + (believed_position[1] - marker_y) ** 2)
-    x_global = believed_position[0] - marker_x - 0.5
-
-    print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
-
-    theta_1 = math.acos(current_z / distance) if distance != 0 else 0
-    theta_2 = math.acos(x_global / distance) if distance != 0 else 0
-
-    theta = theta_2 - theta_1
-
-    # Convert theta to degrees
-    theta = math.degrees(theta)
-    theta = ((current_orientation - marker_ori) % 4) * 90 + theta
-
-    if theta > 180:
-        theta -= 360
-    elif theta < -180:
-        theta += 360
-
-    print(f"Theta correction: {theta} degrees, current orientation: {current_orientation}, marker orientation: {marker_ori}. Theta1: {math.degrees(theta_1)}, Theta2: {math.degrees(theta_2)}")
-
-    if abs(theta) > 5:
-        rospy.logwarn("Angle correction needed: %f degrees", theta)
-        if theta > 0:
-            # Rotate right
-            Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
-            Ab.right(); rospy.sleep(TURN_TIME_90 * (theta / 90)); Ab.stop()
-        else:
-            # Rotate left
-            Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
-            Ab.left(); rospy.sleep(TURN_TIME_90 * (-theta / 90)); Ab.stop()
-
+# 
+# def angle_correction(believed_position):
+#     global current_orientation, current_marker, current_z
+# 
+#     marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0]
+#     marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1]
+#     marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
+# 
+#     distance = math.sqrt((believed_position[0] - marker_x) ** 2 + (believed_position[1] - marker_y) ** 2)
+#     x_global = believed_position[0] - marker_x - 0.5
+# 
+#     print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
+# 
+#     theta_1 = math.acos(current_z / distance) if distance != 0 else 0
+#     theta_2 = math.acos(x_global / distance) if distance != 0 else 0
+# 
+#     theta = theta_2 - theta_1
+# 
+#     # Convert theta to degrees
+#     theta = math.degrees(theta)
+#     theta = ((current_orientation - marker_ori) % 4) * 90 + theta
+# 
+#     if theta > 180:
+#         theta -= 360
+#     elif theta < -180:
+#         theta += 360
+# 
+#     print(f"Theta correction: {theta} degrees, current orientation: {current_orientation}, marker orientation: {marker_ori}. Theta1: {math.degrees(theta_1)}, Theta2: {math.degrees(theta_2)}")
+# 
+#     if abs(theta) > 5:
+#         rospy.logwarn("Angle correction needed: %f degrees", theta)
+#         if theta > 0:
+#             # Rotate right
+#             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
+#             Ab.right(); rospy.sleep(TURN_TIME_90 * (theta / 90)); Ab.stop()
+#         else:
+#             # Rotate left
+#             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
+#             Ab.left(); rospy.sleep(TURN_TIME_90 * (-theta / 90)); Ab.stop()
+# 
 
 def main():
     global marker_exists, new_belief_updater
@@ -220,6 +233,7 @@ def main():
     belief_file = open("belief_positions.txt", "w")
     most_likely_file = open("most_likely_positions.txt", "w")
     actions_file = open("actions_taken.txt", "w")
+    entropy_file = open("entropy_values.txt", "w")
     
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
@@ -267,6 +281,7 @@ def main():
     actions  = maze.coords_to_actions(path)
     coord = start
     believed_position = start
+    entropy_bot = controller.belief_entropy()
 
     # Wait for camera
     rospy.sleep(5.0)
@@ -297,31 +312,33 @@ def main():
             break
             
         # log current belief and planned target
-        belief_list = controller.belief.flatten().tolist()
-        belief_file.write(f"{belief_list}\n")
-        most_likely_file.write(f"{current_believed_pos}\n")
+        belief_list = controller.belief
+        belief_grid = belief_to_grid(belief_list)
+        belief_file.write(f"{belief_grid}\n\n")
+        most_likely_file.write(f"{controller.get_believed_position()}\n")
         actions_file.write(f"{actions[0]}\n")
+        entropy_file.write(f"{entropy_bot}\n")
         rospy.loginfo("Believed pos = %s → waypoint %s",
                       current_believed_pos, waypoint)
         rospy.loginfo("Executing action = %s", actions[0])
 
         print("Marker exists:", marker_exists)
-        
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
             idx = maze.coord_to_state(coord)
-            rospy.loginfo("Previous belief: %s", controller.belief)
-            rospy.loginfo("Marker belief: %s", belief_to_grid(new_belief_updater))
-            controller.relocalise(new_belief_updater)
+            rospy.loginfo("Previous belief: \n%s\n", belief_grid)
+            rospy.loginfo("Marker belief: %s",belief_to_grid(new_belief_updater))
             believed_position = controller.get_believed_position()
+            controller.relocalise(new_belief_updater)
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
             rospy.loginfo("[INFOOOOO] Correcting angle based on marker position")
-            angle_correction(believed_position)
+            # angle_correction(believed_position)
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
+            entropy_bot = controller.belief_entropy()
 
             marker_exists = False
             rospy.sleep(1.0)
@@ -339,6 +356,7 @@ def main():
             waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
+            entropy_bot = controller.belief_entropy()
             rospy.sleep(1.0)
             rospy.sleep(1.0)
 
@@ -348,6 +366,7 @@ def main():
     belief_file.close()
     most_likely_file.close()
     actions_file.close()
+    entropy_file.close()
     shutdown()
 
 if __name__ == '__main__':
