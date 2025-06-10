@@ -229,7 +229,12 @@ def angle_correction(believed_position):
 def main():
     global marker_exists, new_belief_updater
     rospy.init_node('qmdp_controller')
-
+    
+    # Open files for writing
+    belief_file = open("belief_positions.txt", "w")
+    most_likely_file = open("most_likely_positions.txt", "w")
+    actions_file = open("actions_taken.txt", "w")
+    
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
     # Publish checkpoint poses
@@ -282,6 +287,10 @@ def main():
 
     while believed_position != goal:
         # log current belief and planned target
+        belief_list = controller.belief.flatten().tolist()
+        belief_file.write(f"{belief_list}\n")
+        most_likely_file.write(f"{controller.get_believed_position()}\n")
+        actions_file.write(f"{actions[0]}\n")
         rospy.loginfo("Believed pos = %s → waypoint %s",
                       controller.get_believed_position(), waypoint)
         rospy.loginfo("Executing action = %s", actions[0])
@@ -322,6 +331,9 @@ def main():
         
     rospy.loginfo("Arrived at goal %s", goal)
     rospy.loginfo("Final believed path: %s", believed_path)
+    belief_file.close()
+    most_likely_file.close()
+    actions_file.close()
     shutdown()
 
 if __name__ == '__main__':
