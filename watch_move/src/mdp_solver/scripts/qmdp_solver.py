@@ -285,13 +285,37 @@ def main():
     rospy.sleep(5.0)
 
     while believed_position != goal:
+        # Debug: Check if believed position is valid
+        current_believed_pos = controller.get_believed_position()
+        if grid[current_believed_pos[0]][current_believed_pos[1]] == 1:
+            rospy.logerr("ERROR: Believed position %s is in a WALL! This should never happen!", current_believed_pos)
+            rospy.loginfo("Current belief distribution: %s", controller.belief)
+            # Force belief to start position to recover
+            controller.init_belief()
+            current_believed_pos = controller.get_believed_position()
+            rospy.loginfo("Reset belief to start position: %s", current_believed_pos)
+        
+        # Plan path from current believed position
+        waypoint = goal
+        path = maze.shortest_path(current_believed_pos, waypoint)
+        actions = maze.coords_to_actions(path)
+        
+        # Debug: Check if path planning failed
+        if not path:
+            rospy.logerr("ERROR: No path found from %s to %s!", current_believed_pos, waypoint)
+            rospy.loginfo("Maze start: %s, goal: %s", maze.start, maze.goal)
+            break
+        if not actions:
+            rospy.logerr("ERROR: No actions generated from path %s!", path)
+            break
+            
         # log current belief and planned target
         belief_list = controller.belief.flatten().tolist()
         belief_file.write(f"{belief_list}\n")
-        most_likely_file.write(f"{controller.get_believed_position()}\n")
+        most_likely_file.write(f"{current_believed_pos}\n")
         actions_file.write(f"{actions[0]}\n")
         rospy.loginfo("Believed pos = %s → waypoint %s",
-                      controller.get_believed_position(), waypoint)
+                      current_believed_pos, waypoint)
         rospy.loginfo("Executing action = %s", actions[0])
 
         print("Marker exists:", marker_exists)
@@ -300,7 +324,7 @@ def main():
         if marker_exists == True:
             idx = maze.coord_to_state(coord)
             rospy.loginfo("Previous belief: %s", controller.belief)
-            rospy.loginfo("Merker belief: %s", new_belief_updater)
+            rospy.loginfo("Marker belief: %s", belief_to_grid(new_belief_updater))
             controller.relocalise(new_belief_updater)
             believed_position = controller.get_believed_position()
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
@@ -320,7 +344,11 @@ def main():
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             controller.predict_belief(a_idx)
-            believed_path.append(controller.get_believed_position())
+            
+            # Update coord to match the updated belief position
+            coord = controller.get_believed_position()
+            believed_path.append(coord)
+            
             waypoint = pick_waypoint()
             path     = maze.shortest_path(coord, waypoint)
             actions  = maze.coords_to_actions(path)
