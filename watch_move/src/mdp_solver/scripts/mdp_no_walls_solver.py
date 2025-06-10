@@ -269,7 +269,7 @@ def main():
     signal.signal(signal.SIGTERM, shutdown)
     believed_path = []
 
-    waypoint = goal
+    waypoint = pick_waypoint()
     path     = maze.shortest_path(controller.get_believed_position(), waypoint)
     actions  = maze.coords_to_actions(path)
     coord = start
