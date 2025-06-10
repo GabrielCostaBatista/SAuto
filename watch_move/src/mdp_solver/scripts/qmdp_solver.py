@@ -7,13 +7,14 @@ from alphabot_driver.PCA9685 import PCA9685
 from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
-CELL_SIZE     = rospy.get_param('~cell_size', 0.25)      # m per cell
+CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
 LINEAR_SPEED  = 0.1       # m/s
 ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED * 0.9
+#MOTOR_PWM     = 0       # wheel PWM
 MOTOR_PWM     = 12       # wheel PWM
-CORRECTION_FACTOR = 1.02 # correction factor for motor PWM to match speed
+CORRECTION_FACTOR = 1.07 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2
 
@@ -183,7 +184,7 @@ def update_grid_probabilities(grid_probabilities):
         
         marker_exists = True
 
-
+"""
 def angle_correction(believed_position):
     global current_orientation, current_marker, current_z
 
@@ -222,6 +223,7 @@ def angle_correction(believed_position):
             # Rotate left
             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
             Ab.left(); rospy.sleep(TURN_TIME_90 * (-theta / 90)); Ab.stop()
+"""
 
 
 def main():
@@ -289,12 +291,14 @@ def main():
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
             idx = maze.coord_to_state(coord)
+            rospy.loginfo("Previous belief: %s", controller.belief)
+            rospy.loginfo("Merker belief: %s", new_belief_updater)
             controller.relocalise(new_belief_updater)
             believed_position = controller.get_believed_position()
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
-            rospy.loginfo("[INFOOOOO] Correcting angle based on marker position")
-            angle_correction(believed_position)
+            #rospy.loginfo("[INFOOOOO] Correcting angle based on marker position")
+            #angle_correction(believed_position)
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             path     = maze.shortest_path(coord, waypoint)

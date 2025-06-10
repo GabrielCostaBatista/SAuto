@@ -34,7 +34,7 @@ RADIUS_N_STD_DEV = rospy.get_param('~radius_n_std_dev', 2)
 NUM_FRAMES_TO_AVERAGE = rospy.get_param('~num_frames_to_average', 10)
 
 # Minimum distance error to consider
-MEASUREMENT_ERROR = 0.010 # meters
+MEASUREMENT_ERROR = 0.020 # meters
 MIN_DISTANCE_ERROR = MEASUREMENT_ERROR / CELL_SIZE  # in cell units, e.g. 0.010m / 0.25m = 0.04 cells
 
 
