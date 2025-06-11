@@ -10,7 +10,7 @@ import numpy as np
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
 LINEAR_SPEED  = 0.1       # m/s
 ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
-CELL_TIME     = CELL_SIZE / LINEAR_SPEED * 0.5
+CELL_TIME     = CELL_SIZE / LINEAR_SPEED * 0.3
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED 
 #MOTOR_PWM     = 0       # wheel PWM
 MOTOR_PWM          =  12      # wheel PWM
@@ -215,7 +215,7 @@ def angle_correction(believed_position):
     theta_1 = math.acos(current_z / distance) if distance != 0 else 0
     theta_2 = math.acos(x_global / distance) if distance != 0 else 0
  
-    theta = theta_2 - theta_1
+    theta = theta_2 - theta_1 - 90
  
     # Convert theta to degrees
     theta = math.degrees(theta)
@@ -348,7 +348,7 @@ def main():
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
             rospy.loginfo("[INFOOOOO] Correcting angle based on marker position")
-            angle_correction(believed_position)
+            #angle_correction(believed_position)
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             path     = maze.shortest_path(coord, waypoint)
