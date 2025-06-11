@@ -204,8 +204,8 @@ def angle_correction(believed_position):
     marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1]
     marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
 
-    distance = math.sqrt((believed_position[0] - marker_x) ** 2 + (believed_position[1] - marker_y) ** 2)
-    x_global = believed_position[0] - marker_x
+    distance = math.sqrt((believed_position[0] - marker_x - 0.5) ** 2 + (believed_position[1] - marker_y - 0.5) ** 2)
+    x_global = believed_position[0] - marker_x - 0.5
 
     print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
 
