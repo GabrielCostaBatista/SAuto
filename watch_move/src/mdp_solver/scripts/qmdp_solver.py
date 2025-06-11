@@ -31,6 +31,7 @@ global wait_variable
 wait_variable = True 
 
 # Maze and checkpoints
+"""
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -59,6 +60,19 @@ grid = [
 
 start, goal = (1,1), (7,20)
 checkpoints = [(1,6,0), (19,5,3), (17,13,0), (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+"""
+
+grid = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+ [1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
+ [1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
+ [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+ [1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+ [1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+ [1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1],
+ [1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1],
+ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+start, goal = (1,1), (1,10)
+checkpoints = [(1,4,0), (3,3,2), (5,3,3), (4,6,0), (4,10,0), (1,10,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
