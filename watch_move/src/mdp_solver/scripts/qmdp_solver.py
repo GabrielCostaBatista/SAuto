@@ -217,12 +217,23 @@ def angle_correction(believed_position):
     if ratio_2 > 1:
         ratio_2 = 1
     theta_2 = math.acos(ratio_2)
-    theta_2 -= ((1 - marker_ori) * math.pi / 2)
+
+    if marker_ori == 0:
+        theta_2 -= math.pi / 2
+    elif marker_ori == 2:
+        theta_2 -= 3 * math.pi / 2
+    elif marker_ori == 3:
+        theta_2 -= math.pi
+    # theta_2 -= ((1 - marker_ori) * math.pi / 2)
 
     theta = theta_2 - theta_1
 
     # Convert theta to degrees
     theta = math.degrees(theta)
+
+    if believed_position[1] + 0.5 - marker_y < 0:
+        theta = -theta
+
     theta = ((current_orientation - marker_ori) % 4) * 90 + theta
 
     if theta > 180:
