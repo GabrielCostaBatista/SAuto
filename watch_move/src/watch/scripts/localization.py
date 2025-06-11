@@ -204,7 +204,7 @@ class RobotLocalizer:
 
             angle_start = ((global_marker_pos[2] + 2) % 4) * 90
             angle_end = ((global_marker_pos[2]) % 4) * 90
-            rospy.loginfo("angles = %s , %s", angle_start, angle_end)
+            #rospy.loginfo("angles = %s , %s", angle_start, angle_end)
             # Create Polygon message to publish probabilities
             probability_map = PolygonStamped()
             probability_map.header = Header()
