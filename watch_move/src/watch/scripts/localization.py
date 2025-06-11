@@ -14,7 +14,6 @@ def annular_sector(center, r_inner, r_outer, angle_start, angle_end, num_points=
     # Handle angle wrapping if angle_end < angle_start
     if angle_end < angle_start:
         angle_end += 360
-    rospy.loginfo("angles = %s , %s", angle_start, angle_end)
 
     
     angles = np.linspace(np.radians(angle_start), np.radians(angle_end), num_points)
