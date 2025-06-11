@@ -175,7 +175,8 @@ def update_grid_probabilities(grid_probabilities):
         current_marker = int(grid_probabilities.header.frame_id)
         print(f"[INFO] Received grid probabilities for marker {current_marker}")
         # Extract z position from timestamp (stored as nanoseconds)
-        current_z = grid_probabilities.header.stamp.nsecs / 1e9
+        current_z = grid_probabilities.header.stamp.nsecs / 1e6
+        rospy.loginfo("Current z position: %f", current_z)
         belief_updater = length_belief.copy()
         new_belief_updater = np.zeros(len(length_belief), dtype=float)
         for idx, cell in enumerate(grid_probabilities.polygon.points):
@@ -211,7 +212,7 @@ def angle_correction(believed_position):
 
     theta_1 = math.acos(current_z / distance) if distance != 0 else 0
     theta_2 = math.acos(x_global / distance) if distance != 0 else 0
-    theta_2 -= ((1 - marker_ori) * 90)
+    theta_2 -= ((1 - marker_ori) * math.pi / 2)
 
     theta = theta_2 - theta_1
 
