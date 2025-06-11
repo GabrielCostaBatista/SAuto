@@ -181,6 +181,10 @@ class QMDPController:
         self.belief = None
         self.entropy_thresh = entropy_thresh
 
+    def belief_entropy(self):
+        p = self.belief
+        return -np.sum(p[p>0] * np.log(p[p>0]))
+
     def init_belief(self):
         b = np.zeros(self.mdp.n)
         b[self.mdp.maze.start_idx] = 1.0
@@ -210,7 +214,11 @@ class QMDPController:
                 # Try to spread 1-2 steps forward
                 for steps in [1, 2]:
                     nr, nc = coord[0] + dr*steps, coord[1] + dc*steps
-                    if (nr, nc) in self.mdp.maze._idx_map:
+                    # CRITICAL: Only spread to valid free cells, never to walls
+                    if ((nr, nc) in self.mdp.maze._idx_map and 
+                        0 <= nr < self.mdp.maze.grid.shape[0] and 
+                        0 <= nc < self.mdp.maze.grid.shape[1] and
+                        self.mdp.maze.grid[nr, nc] == 0):
                         forward_s = self.mdp.maze.coord_to_state((nr, nc))
                         # Spread decreases with distance
                         forward_spread[forward_s] += b_pred[s] * (0.3 / steps)
@@ -222,6 +230,20 @@ class QMDPController:
             b_pred = (1 - spreading_factor) * b_pred + spreading_factor * forward_spread
         
         self.belief = b_pred / b_pred.sum()
+        
+        # SAFETY CHECK: Ensure no belief is on wall cells
+        for s in range(len(self.belief)):
+            coord = self.mdp.maze.state_to_coord(s)
+            if self.mdp.maze.grid[coord[0], coord[1]] == 1:
+                print(f"WARNING: Belief found on wall cell {coord}! Setting to 0.")
+                self.belief[s] = 0.0
+        
+        # Renormalize after wall removal
+        if self.belief.sum() > 0:
+            self.belief = self.belief / self.belief.sum()
+        else:
+            print("ERROR: All belief removed! Reinitializing to start position.")
+            self.init_belief()
 
     def relocalise(self, marker_matrix): 
         b =  np.multiply(marker_matrix, self.belief)
