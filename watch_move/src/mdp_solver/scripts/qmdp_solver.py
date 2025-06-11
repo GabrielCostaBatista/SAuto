@@ -215,7 +215,7 @@ def angle_correction(believed_position):
     theta_1 = math.acos(current_z / distance) if distance != 0 else 0
     theta_2 = math.acos(x_global / distance) if distance != 0 else 0
  
-    theta = theta_2 - theta_1 - 90
+    theta = theta_2 - theta_1
  
     # Convert theta to degrees
     theta = math.degrees(theta)
@@ -348,7 +348,7 @@ def main():
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
             rospy.loginfo("[INFOOOOO] Correcting angle based on marker position")
-            #angle_correction(believed_position)
+            angle_correction(believed_position)
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             path     = maze.shortest_path(coord, waypoint)
