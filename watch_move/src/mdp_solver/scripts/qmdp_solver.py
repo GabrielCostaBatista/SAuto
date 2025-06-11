@@ -10,11 +10,11 @@ import numpy as np
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
 LINEAR_SPEED  = 0.1       # m/s
 ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
-CELL_TIME     = CELL_SIZE / LINEAR_SPEED
+CELL_TIME     = 1 #CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED * 0.9
 #MOTOR_PWM     = 0       # wheel PWM
-MOTOR_PWM     = 9.5       # wheel PWM
-CORRECTION_FACTOR = 1.12 # correction factor for motor PWM to match speed
+MOTOR_PWM          =  12      # wheel PWM
+CORRECTION_FACTOR  = 1.09 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2
 
