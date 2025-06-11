@@ -10,7 +10,7 @@ import numpy as np
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
 LINEAR_SPEED  = 0.1       # m/s
 ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
-CELL_TIME     = CELL_SIZE / LINEAR_SPEED * 0.8
+CELL_TIME     = CELL_SIZE / LINEAR_SPEED * 0.5
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED 
 #MOTOR_PWM     = 0       # wheel PWM
 MOTOR_PWM          =  12      # wheel PWM
@@ -31,7 +31,7 @@ global wait_variable
 wait_variable = True 
 
 # Maze and checkpoints
-"""
+
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
@@ -46,7 +46,7 @@ grid = [
 ]
 
 start, goal = (1,1), (7,20)
-checkpoints = [(1,6,0), (19,5,3), (17,13,0), (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+checkpoints = [(1,10,0), (6,11,3)]#, (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 """
 
 grid = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -60,6 +60,7 @@ grid = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 start, goal = (1,1), (1,10)
 checkpoints = [(1,4,0), (3,3,2), (5,3,3), (4,6,0), (4,10,0), (1,10,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+"""
 
 marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
@@ -198,46 +199,46 @@ def update_grid_probabilities(grid_probabilities):
         
         marker_exists = True
 
-# 
-# def angle_correction(believed_position):
-#     global current_orientation, current_marker, current_z
-# 
-#     marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0]
-#     marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1]
-#     marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
-# 
-#     distance = math.sqrt((believed_position[0] - marker_x) ** 2 + (believed_position[1] - marker_y) ** 2)
-#     x_global = believed_position[0] - marker_x - 0.5
-# 
-#     print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
-# 
-#     theta_1 = math.acos(current_z / distance) if distance != 0 else 0
-#     theta_2 = math.acos(x_global / distance) if distance != 0 else 0
-# 
-#     theta = theta_2 - theta_1
-# 
-#     # Convert theta to degrees
-#     theta = math.degrees(theta)
-#     theta = ((current_orientation - marker_ori) % 4) * 90 + theta
-# 
-#     if theta > 180:
-#         theta -= 360
-#     elif theta < -180:
-#         theta += 360
-# 
-#     print(f"Theta correction: {theta} degrees, current orientation: {current_orientation}, marker orientation: {marker_ori}. Theta1: {math.degrees(theta_1)}, Theta2: {math.degrees(theta_2)}")
-# 
-#     if abs(theta) > 5:
-#         rospy.logwarn("Angle correction needed: %f degrees", theta)
-#         if theta > 0:
-#             # Rotate right
-#             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
-#             Ab.right(); rospy.sleep(TURN_TIME_90 * (theta / 90)); Ab.stop()
-#         else:
-#             # Rotate left
-#             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
-#             Ab.left(); rospy.sleep(TURN_TIME_90 * (-theta / 90)); Ab.stop()
-# 
+ 
+def angle_correction(believed_position):
+    global current_orientation, current_marker, current_z
+ 
+    marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0]
+    marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1]
+    marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
+ 
+    distance = math.sqrt((believed_position[0] - marker_x) ** 2 + (believed_position[1] - marker_y) ** 2)
+    x_global = believed_position[0] - marker_x - 0.5
+ 
+    print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
+
+    theta_1 = math.acos(current_z / distance) if distance != 0 else 0
+    theta_2 = math.acos(x_global / distance) if distance != 0 else 0
+ 
+    theta = theta_2 - theta_1
+ 
+    # Convert theta to degrees
+    theta = math.degrees(theta)
+    theta = ((current_orientation - marker_ori) % 4) * 90 + theta
+ 
+    if theta > 180:
+        theta -= 360
+    elif theta < -180:
+        theta += 360
+ 
+    print(f"Theta correction: {theta} degrees, current orientation: {current_orientation}, marker orientation: {marker_ori}. Theta1: {math.degrees(theta_1)}, Theta2: {math.degrees(theta_2)}")
+ 
+    if abs(theta) > 5:
+        rospy.logwarn("Angle correction needed: %f degrees", theta)
+        if theta > 0:
+            # Rotate right
+            Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
+            Ab.right(); rospy.sleep(TURN_TIME_90 * (theta / 90)); Ab.stop()
+        else:
+          # Rotate left
+            Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
+            Ab.left(); rospy.sleep(TURN_TIME_90 * (-theta / 90)); Ab.stop()
+
 
 def main():
     global marker_exists, new_belief_updater
@@ -347,7 +348,7 @@ def main():
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
             rospy.loginfo("[INFOOOOO] Correcting angle based on marker position")
-            # angle_correction(believed_position)
+            angle_correction(believed_position)
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             path     = maze.shortest_path(coord, waypoint)
