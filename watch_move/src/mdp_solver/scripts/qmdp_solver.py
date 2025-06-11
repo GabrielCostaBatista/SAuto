@@ -8,12 +8,12 @@ from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
-LINEAR_SPEED  = 0.1       # m/s
-ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
+LINEAR_SPEED  = 0.16       # m/s
+ANGULAR_SPEED = math.pi/2*1.7 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
-TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED * 0.9
-MOTOR_PWM     = 12       # wheel PWMAdd commentMore actions
-CORRECTION_FACTOR = 1.02 # correction factor for motor PWM to match speed
+TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
+MOTOR_PWM     = 12       # wheel PWM
+CORRECTION_FACTOR = 1.03 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2
 
