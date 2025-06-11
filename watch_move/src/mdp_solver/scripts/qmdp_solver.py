@@ -201,17 +201,22 @@ def update_grid_probabilities(grid_probabilities):
 def angle_correction(believed_position):
     global current_orientation, current_marker, current_z
 
-    marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0]
-    marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1]
     marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
+    marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0] + marker_orientation_dictionary[marker_ori][0]
+    marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1] + marker_orientation_dictionary[marker_ori][1]
 
     distance = math.sqrt((believed_position[0] + 0.5 - marker_x) ** 2 + (believed_position[1] + 0.5 - marker_y) ** 2)
-    x_global = believed_position[0] - marker_x - 0.5
+    x_global = believed_position[0] + 0.5 - marker_x
 
     print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
-
-    theta_1 = math.acos(current_z / distance) if distance != 0 else 0
-    theta_2 = math.acos(x_global / distance) if distance != 0 else 0
+    ratio_1 = current_z / distance if distance != 0 else 0
+    if ratio_1 > 1:
+        ratio_1 = 1
+    theta_1 = math.acos(ratio_1)
+    ratio_2 = x_global / distance if distance != 0 else 0
+    if ratio_2 > 1:
+        ratio_2 = 1
+    theta_2 = math.acos(ratio_2)
     theta_2 -= ((1 - marker_ori) * math.pi / 2)
 
     theta = theta_2 - theta_1

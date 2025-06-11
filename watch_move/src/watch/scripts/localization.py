@@ -27,8 +27,8 @@ NUM_PROTECTED_MARKERS = rospy.get_param('~num_protected_markers', 2)
 # Protected markers id list (can be overridden via ROS parameter in launch file)
 PROTECTED_MARKERS = rospy.get_param('~protected_markers', [0, 1])
 
-# Get cell size from ROS parameter (default 0.25 meters)
-CELL_SIZE = rospy.get_param('~cell_size', 0.25)  # meters per cell
+# Get cell size from ROS parameter (default 0.30 meters)
+CELL_SIZE = rospy.get_param('~cell_size', 0.30)  # meters per cell
 
 RADIUS_N_STD_DEV = rospy.get_param('~radius_n_std_dev', 2)
 
@@ -209,8 +209,8 @@ class RobotLocalizer:
             probability_map = PolygonStamped()
             probability_map.header = Header()
             probability_map.header.frame_id = str(observed_marker_id)
+            distances_list = [pair[0] for pair in self.distances[observed_marker_id]]
             z_list = [pair[2] for pair in self.distances[observed_marker_id]]
-            rospy.loginfo(f"Distances for marker {observed_marker_id}: {z_list}")
             mean_z = np.mean(z_list)
             #rospy.loginfo(f"Mean z value for marker {observed_marker_id}: {mean_z:.3f}")
             probability_map.header.stamp = rospy.Time(secs=0, nsecs=int(mean_z * 1e6))
