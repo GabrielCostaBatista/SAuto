@@ -13,8 +13,8 @@ ANGULAR_SPEED = math.pi/2*1.4 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED * 0.8
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED 
 #MOTOR_PWM     = 0       # wheel PWM
-MOTOR_PWM     = 9.5       # wheel PWM
-CORRECTION_FACTOR = 1.12 # correction factor for motor PWM to match speed
+MOTOR_PWM          =  12      # wheel PWM
+CORRECTION_FACTOR  = 1.09 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2
 
@@ -31,6 +31,7 @@ global wait_variable
 wait_variable = True 
 
 # Maze and checkpoints
+"""
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
@@ -44,8 +45,21 @@ grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
-start, goal = (1,1), (6,22)
-checkpoints = [(1,10, 0), (6,11,3), (3,22,0), (6,20,0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+start, goal = (1,1), (7,20)
+checkpoints = [(1,6,0), (19,5,3), (17,13,0), (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+"""
+
+grid = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+ [1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
+ [1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
+ [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+ [1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+ [1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+ [1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1],
+ [1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1],
+ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+start, goal = (1,1), (1,10)
+checkpoints = [(1,4,0), (3,3,2), (5,3,3), (4,6,0), (4,10,0), (1,10,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
