@@ -8,7 +8,7 @@ from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
-LINEAR_SPEED  = 0.16       # m/s
+LINEAR_SPEED  = 0.14       # m/s
 ANGULAR_SPEED = math.pi/2*1.7 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
@@ -57,7 +57,7 @@ grid = [
 ]
 
 start, goal = (1,1), (7,20)
-checkpoints = [(1,6,0), (19,5,3), (17,13,0), (15,21,0), (7,21,1)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+checkpoints = [(1,6,0), (10,4,3), (2, 10, 0), (19,5,3),(18,13,0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
@@ -205,7 +205,7 @@ def angle_correction(believed_position):
     marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
 
     distance = math.sqrt((believed_position[0] - marker_x) ** 2 + (believed_position[1] - marker_y) ** 2)
-    x_global = believed_position[0] - marker_x - 0.5
+    x_global = abs(believed_position[0] - marker_x) - 0.5
 
     print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
 
@@ -383,3 +383,13 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
+
+
+
+
+
