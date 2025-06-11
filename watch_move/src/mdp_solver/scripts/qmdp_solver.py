@@ -211,7 +211,7 @@ def angle_correction(believed_position):
 
     theta_1 = math.acos(current_z / distance) if distance != 0 else 0
     theta_2 = math.acos(x_global / distance) if distance != 0 else 0
-    theta_2 -= ((1 - marker_ori) * 90)
+    theta_2 -= ((1 - marker_ori) * math.pi / 2)
 
     theta = theta_2 - theta_1
 
