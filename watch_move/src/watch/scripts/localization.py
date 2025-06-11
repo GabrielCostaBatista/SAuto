@@ -199,9 +199,9 @@ class RobotLocalizer:
             elif global_marker_pos[2] == 3:
                 x_max = global_marker_pos[0]
 
-            #sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 2) % 4) * 90, angle_end = ((global_marker_pos[2]) % 4) * 90)
-            #sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 2) % 4) * 30, angle_end = ((global_marker_pos[2]) % 4) * 30)
-            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = 90, angle_end = 270)
+            # Angles in the usual frame instead of our x,y definition
+            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 1) % 4) * 90, angle_end = ((global_marker_pos[2] + 3) % 4) * 90)
+            # sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = 90, angle_end = 270)
 
             angle_start = ((global_marker_pos[2] + 2) % 4) * 90
             angle_end = ((global_marker_pos[2]) % 4) * 90
