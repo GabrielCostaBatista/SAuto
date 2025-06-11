@@ -125,7 +125,7 @@ class RobotLocalizer:
             if marker_id not in self.distances:
                 self.distances[marker_id] = []
 
-            self.distances[marker_id].append([distance, timestamp, msg.pose.position.z])
+            self.distances[marker_id].append([distance, timestamp, z_cell_normalized])
 
             if len(self.distances[marker_id]) == NUM_FRAMES_TO_AVERAGE:
                 # Compute grid probabilities based on this marker observation
