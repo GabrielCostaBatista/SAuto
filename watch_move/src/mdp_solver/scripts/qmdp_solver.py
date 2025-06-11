@@ -175,7 +175,8 @@ def update_grid_probabilities(grid_probabilities):
         current_marker = int(grid_probabilities.header.frame_id)
         print(f"[INFO] Received grid probabilities for marker {current_marker}")
         # Extract z position from timestamp (stored as nanoseconds)
-        current_z = grid_probabilities.header.stamp.nsecs / 1e9
+        current_z = grid_probabilities.header.stamp.nsecs / 1e6
+        rospy.loginfo("Current z position: %f", current_z)
         belief_updater = length_belief.copy()
         new_belief_updater = np.zeros(len(length_belief), dtype=float)
         for idx, cell in enumerate(grid_probabilities.polygon.points):
