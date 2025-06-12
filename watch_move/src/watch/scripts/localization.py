@@ -211,9 +211,10 @@ class RobotLocalizer:
             probability_map.header.frame_id = str(observed_marker_id)
             distances_list = [pair[0] for pair in self.distances[observed_marker_id]]
             z_list = [pair[2] for pair in self.distances[observed_marker_id]]
+            mean_distance = np.mean(distances_list)
             mean_z = np.mean(z_list)
             #rospy.loginfo(f"Mean z value for marker {observed_marker_id}: {mean_z:.3f}")
-            probability_map.header.stamp = rospy.Time(secs=0, nsecs=int(mean_z * 1e6))
+            probability_map.header.stamp = rospy.Time(secs=int(mean_distance * 1e6), nsecs=int(mean_z * 1e6))
 
             for x in np.linspace(x_min, x_max, num = x_max - x_min + 1):
                 if x < 0:
