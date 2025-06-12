@@ -243,7 +243,7 @@ def angle_correction(believed_position):
 
     print(f"Theta correction: {theta} degrees, current orientation: {current_orientation}, marker orientation: {marker_ori}. Theta1: {math.degrees(theta_1)}, Theta2: {math.degrees(theta_2)}")
 
-    if abs(theta) > 5:
+    if abs(theta) > 1 and current_z < 7:
         rospy.logwarn("Angle correction needed: %f degrees", theta)
         if theta > 0:
             # Rotate right
