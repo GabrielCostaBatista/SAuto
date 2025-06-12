@@ -13,7 +13,7 @@ ANGULAR_SPEED = math.pi/2*1.7 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
 MOTOR_PWM     = 12       # wheel PWM
-CORRECTION_FACTOR = 1.03 # correction factor for motor PWM to match speed
+CORRECTION_FACTOR = 1.05 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2
 
@@ -40,8 +40,8 @@ grid = [
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1],
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1],
-    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
-    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
@@ -56,8 +56,8 @@ grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
-start, goal = (1,1), (15,21)
-checkpoints = [(1,6,0), (10,4,3), (19,6,3), (2, 10, 0), (18,13,0), (15, 21, 0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+start, goal = (1,1), (9,11)
+checkpoints = [(1,6,0), (10,6,3), (9,11,0), (2, 10, 0), (18,13,0), (15, 21, 0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
