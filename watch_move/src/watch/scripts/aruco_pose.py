@@ -37,8 +37,8 @@ class ArucoCompressedDetector:
         else:
             rospy.loginfo("[INFO] Camera calibration loaded.")
 
-        # === Set marker length in real-world units (e.g., cm or meters) ===
-        self.marker_size = rospy.get_param('~marker_size', 0.10)  # default to 10 cm marker size
+        # === Set marker length in meters (default to 10 cm marker size) ===
+        self.marker_size = rospy.get_param('~marker_size', 0.10)
 
         rospy.Subscriber("/raspicam_node/image/compressed", CompressedImage, self.image_callback)
         rospy.loginfo("ArUco detector node started. Waiting for images...")
@@ -94,6 +94,47 @@ class ArucoCompressedDetector:
         # else:
             # rospy.loginfo("[INFO] No markers detected.")
 
+# Define servo angle to pulse conversion function
+def set_servo_angle(pwm_controller, channel, angle):
+    """
+    Convert angle (0-180 degrees) to pulse width and set servo position.
+    Includes compensation for physical servo misalignment.
+    
+    Args:
+        pwm_controller: PCA9685 instance
+        channel: Servo channel (0 for pan, 1 for tilt)
+        angle: Angle in degrees (0-180, where 90 is middle)
+    """
+    # Compensation offsets for servo misalignment
+    # Camera is facing 45° down and 45° to the right when servos are at 90°
+    if channel == 0:  # Pan servo (horizontal)
+        # Compensate for 45° right offset - subtract 45° to center
+        # Anti-clockwise rotation is positive
+        compensated_angle = angle + 27
+    elif channel == 1:  # Tilt servo (vertical)
+        # Compensate for 45° down offset - add 45° to center (assuming down is positive)
+        # Down is positive
+        compensated_angle = angle - 27
+    else:
+        rospy.logerr(f"[ERROR] Invalid servo channel: {channel}")
+        return
+    
+    # Clamp compensated angle to valid servo range
+    compensated_angle = max(0, min(180, compensated_angle))
+    
+    # Convert angle to pulse width (500-2500 microseconds)
+    # 0 degrees = 500us, 90 degrees = 1500us, 180 degrees = 2500us
+    pulse_width = int(500 + (compensated_angle / 180.0) * 2000)
+    
+    # Clamp to valid range
+    pulse_width = max(500, min(2500, pulse_width))
+    
+    # Set servo position
+    pwm_controller.setServoPulse(channel, pulse_width)
+    
+    rospy.loginfo(f"[SERVO] Channel {channel} set to {angle}° (compensated: {compensated_angle}°, pulse: {pulse_width}μs)")
+
+
 def calibrate_camera_angle():
     """
     Centers both camera servo motors (pan and tilt) to their middle position using PCA9685.
@@ -108,46 +149,6 @@ def calibrate_camera_angle():
         # Initialize PWM controller
         pwm = PCA9685(0x40)
         pwm.setPWMFreq(50)
-        
-        # Define servo angle to pulse conversion function
-        def set_servo_angle(pwm_controller, channel, angle):
-            """
-            Convert angle (0-180 degrees) to pulse width and set servo position.
-            Includes compensation for physical servo misalignment.
-            
-            Args:
-                pwm_controller: PCA9685 instance
-                channel: Servo channel (0 for pan, 1 for tilt)
-                angle: Angle in degrees (0-180, where 90 is middle)
-            """
-            # Compensation offsets for servo misalignment
-            # Camera is facing 45° down and 45° to the right when servos are at 90°
-            if channel == 0:  # Pan servo (horizontal)
-                # Compensate for 45° right offset - subtract 45° to center
-                # Anti-clockwise rotation is positive
-                compensated_angle = angle + 27
-            elif channel == 1:  # Tilt servo (vertical)
-                # Compensate for 45° down offset - add 45° to center (assuming down is positive)
-                # Down is positive
-                compensated_angle = angle - 27
-            else:
-                rospy.logerr(f"[ERROR] Invalid servo channel: {channel}")
-                return
-            
-            # Clamp compensated angle to valid servo range
-            compensated_angle = max(0, min(180, compensated_angle))
-            
-            # Convert angle to pulse width (500-2500 microseconds)
-            # 0 degrees = 500us, 90 degrees = 1500us, 180 degrees = 2500us
-            pulse_width = int(500 + (compensated_angle / 180.0) * 2000)
-            
-            # Clamp to valid range
-            pulse_width = max(500, min(2500, pulse_width))
-            
-            # Set servo position
-            pwm_controller.setServoPulse(channel, pulse_width)
-            
-            rospy.loginfo(f"[SERVO] Channel {channel} set to {angle}° (compensated: {compensated_angle}°, pulse: {pulse_width}μs)")
         
         # Set both servos to middle position (90 degrees)
         rospy.loginfo("[CALIBRATION] Centering camera servos...")
