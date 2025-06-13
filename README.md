@@ -12,10 +12,11 @@ The folder watch_move/src has all the codes developed. Following is the guide fo
   - [1.3. Scripts: AlphaBot2 integration](#13-scripts-alphabot2-integration)
 - [2. move: First test of AlphaBot2 movement](#2-move-first-test-of-alphabot2-movement)
 - [3. watch: Camera and ArUco Detection](#3-watch-camera-and-aruco-detection)
-  - [3.1. Install the Foxglove Bridge in Alphabot](#31-install-the-foxglove-bridge-in-alphabot)
-  - [3.2. Start camera (Streaming images example specific)](#32-start-camera-streaming-images-example-specific)
-  - [3.3. Install Foxglove Studio on macOS](#33-install-foxglove-studio-on-macos)
-  - [3.4. Stream images in Foxglove](#34-stream-images-in-foxglove)
+  - [3.1. ArUco Setups](#31-aruco-setups)
+  - [3.2. Calibration](#32-calibration)
+  - [3.3. ArUco Localization](#33-aruco-localization)
+  - [3.4. Camera Info](#34-camera-info)
+  - [3.5. Trials](#35-trials)
 
 ---
 
@@ -25,275 +26,66 @@ This folder contains the files for the implementation of all algorithms. All imp
 
 ## 1.1. Launch files
 
-mdp_solver.launch: File to launch the file that integrates the AlphaBot2 and the MDP algorithm so that it may run on the AlphaBot2
+- mdp_solver.launch: File to launch the file that integrates the AlphaBot2 and the MDP algorithm so that it may run on the AlphaBot2.
 
-qmdp_solver.launch: File to launch the file that integrates the AlphaBot2 and the QMDP algorithm so that it may run on the AlphaBot2
+- qmdp_solver.launch: File to launch the file that integrates the AlphaBot2 and the QMDP algorithm so that it may run on the AlphaBot2.
 
 
 ## 1.2. Scripts: Algorithms
 
+- MDP_simple_maze_solver.py: Algorithm to solve a maze using a MDP.
 
+- POMDP_simple_solver.py: Algorithm to solve a maze using a QMDP.
 
-## 1.3. Optional (Deprecated): Mount a Shared Folder Between macOS and the VM
 
-You might want to edit code directly in your PC instead of working inside the VM (to use your usual code editor for example). To share files between your macOS host and the Ubuntu VM:
+## 1.3. Scripts: AlphaBot2 integration
 
-1. Create a folder, e.g., `~/ros_shared`, or clone this repository on macOS (we will assume that you cloned the repository) (remember that the repository folder will appear inside the folder where you are when cloning it):  
-   ```bash
-   mkdir -p ~/ros_shared
-   ```
-   or 
-   ```bash
-   git clone https://github.com/GabrielCostaBatista/SAuto.git
-   ```
+- qmdp_solver.py: Integration of an algorithm with the AlphaBot2 interface and integration of robot's movement with the camera and ArUco detection.
 
-2. Mount it into the VM:  
-   ```bash
-   multipass mount SAuto ros1-vm:/home/ubuntu/SAuto
-   ```
 
-3. Check if the shared folder is inside the VM:
-   ```bash
-   multipass shell ros1-vm 
-   ls
-   ```
+# 2. move: First test of AlphaBot2 movement
 
-## 1.4. Fixing catkin_make errors by using VSCode remote instead of shared folder
+Includes launch files as well. Has a first test of controlling the robot's movement.
 
-### 1. Unmount the Shared Folder `/home/ubuntu/SAuto`
-1. If you previously mounted a shared folder at `/home/ubuntu/SAuto`, unmount it from your macOS terminal (not inside the VM) with:
+- move.py and move_v2.py: First test of AlphaBot2's movement via keyboard control.
 
-```bash
-multipass umount ros1-vm:/home/ubuntu/SAuto
-```
 
-Replace `ros1-vm` with your VM's name if it's different.
+# 3. watch: Camera and ArUco Detection 
 
+Includes launch files as well. Has the control of the camera and the process of the ArUco markers.
 
-### 2. Set Up GitHub SSH Access Inside the VM
+## 3.1. ArUco Setups
 
-**a. Generate a new SSH key pair (inside the VM):**
+- aruco_listener.py: Detect the ArUco markers
 
-```bash
-ssh-keygen -t ed25519 -C "your_email@example.com"
-```
+- aruco_pose.py: Determine the position from the ArUco markers.
 
-- When prompted for a file location, press Enter to accept the default.
-- Optionally set a passphrase, or press Enter to leave it empty.
+## 3.2. Calibration
 
-**b. Add your SSH key to the SSH agent:**
+- calibration_chess_board.py: Calibration of the Camera.
 
-```bash
-eval "$(ssh-agent -s)"
-ssh-add ~/.ssh/id_ed25519
-```
+## 3.3. ArUco Localization
 
-**c. Copy your public key to your clipboard:**
+- localization.py: Localize the robot from the detection of ArUco markers.
 
-```bash
-cat ~/.ssh/id_ed25519.pub
-```
+## 3.4. Camera Info
 
-- Copy the entire output.
+- camera_info: Folder with camera calibration.
 
-**d. Add the public key to your GitHub account:**
-- Go to GitHub → Settings → SSH and GPG keys → New SSH key.
-- Paste your copied key and give it a descriptive title (e.g., "Multipass VM").
-- Save the key.
+## 3.5. Trials
 
-**e. Test the SSH connection to GitHub:**
+- trials: Tests of the calibration and detection of ArUco markers offline without the AlphaBot2
 
-```bash
-ssh -T git@github.com
-```
 
-- On first connection, type `yes` to confirm.  
-- You should see a welcome message if successful.
 
+## Authors
 
-### 3. Clone the Repository Using SSH
+This projected was made by:
 
-Now you can clone the repository securely without username/password prompts:
+André Feliciano
 
-```bash
-git clone git@github.com:GabrielCostaBatista/SAuto.git
-```
+Gabriel Batista
 
+Maria Maló
 
-### 4. Setup VSCode Remote-SSH
-
-VSCode Remote-SSH allows you to use your macOS VSCode to edit files directly on the Multipass VM, providing a seamless development experience without the permission issues of shared folders.
-
-**a. Set up SSH keys for Multipass VM access:**
-- In MacOS, check if you already have an SSH key:
-  ```bash
-  ls -la ~/.ssh
-  ```
-  Look for files named `id_ed25519` and `id_ed25519.pub` (or `id_rsa` and `id_rsa.pub`). If these exist, you can skip the key generation step.
-
-- If you don't have an SSH key, generate one:
-  ```bash
-  ssh-keygen -t ed25519
-  ```
-  Press Enter to accept the default location.
-  
-- Get your VM's IP address:
-  ```bash
-  multipass list
-  ```
-  Note the IP address of your `ros1-vm` VM (we'll refer to it as `<VM-IP>`)
-  
-- For Multipass VMs, use this special method to add your SSH key:
-  ```bash
-  cat ~/.ssh/id_ed25519.pub | multipass exec ros1-vm -- bash -c "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-  ```
-  If you're using RSA keys instead of ED25519, use `~/.ssh/id_rsa.pub` in the command above.
-
-- Test the connection:
-  ```bash
-  ssh ubuntu@<VM-IP>
-  ```
-  You should now be able to connect without a password prompt.
-
-**b. Install the Remote-SSH extension in VSCode:**
-- Open VSCode on your macOS
-- Go to Extensions (or press `Cmd+Shift+X`)
-- Search for "Remote - SSH" by Microsoft
-- Click Install
-
-**c. Configure SSH connection in VSCode:**
-- In VSCode, press `F1` or `Cmd+Shift+P` to open the command palette
-- Type "Remote-SSH: Add New SSH Host" and select it
-- Enter the SSH connection command:
-  ```
-  ssh ubuntu@<VM-IP>
-  ```
-  (Replace `<VM-IP>` with your VM's actual IP address)
-- Choose a config file to update (usually the first option is fine)
-
-**d. Connect to your VM:**
-- In VSCode, click on the green button in the bottom-left corner
-- Select "Connect to Host..." from the menu
-- Choose your VM from the list
-- VSCode will connect using your SSH key
-
-**e. When connected:**
-- VSCode will open a new window connected to your VM
-- Go to "File > Open Folder" to navigate to your project folder (e.g., `/home/ubuntu/SAuto`)
-- You now have full access to your ROS project with all VSCode features
-
-**f. Create a persistent bookmark:**
-- After successfully connecting once, your VM will appear in the Remote Explorer sidebar
-- (Optional) You can change the name that appears on the sidebar by altering the name after Host in `~/.ssh/config` file.
-
-Now you can develop ROS applications using your familiar macOS VSCode environment while the code runs natively in the Ubuntu VM, avoiding permission issues with shared folders while getting the full development experience.
-
-## 1.5. Additional Tips
-
-- Use `multipass list` to check running instances and their IP addresses.  
-- Use `multipass exec ros1-vm -- <command>` to run commands inside the VM without opening a shell.  
-- To stop and delete the VM:  
-  ```bash
-  multipass stop ros1-vm  
-  multipass delete ros1-vm  
-  multipass purge
-  ```
-
-> 🎉 You now have a working ROS Noetic environment inside an Ubuntu 20.04 VM on your macOS machine using Multipass!
-
----
-
-# 2. Setting Up Foxglove Studio with ROS Noetic (VM to MacOS)
-
-Foxglove Studio is a modern visualization tool for ROS data, similar to RViz, but with a web and desktop interface and advanced features.
-
-## 2.1. Install the Foxglove Bridge in ROS VM
-
-Inside your Multipass Ubuntu VM, run:  
-```bash
-sudo apt update  
-sudo apt install ros-noetic-foxglove-bridge
-```
-
-## 2.2. Launch the Foxglove Bridge
-
-Start the bridge node so Foxglove Studio can connect:  
-```bash
-roslaunch --screen foxglove_bridge foxglove_bridge.launch port:=8765
-```
-This opens a WebSocket server on port 8765.
-
-> **Note**: The `--screen` option in roslaunch is used to display the standard output (stdout) and standard error (stderr) from all nodes directly in the terminal where you run the command, rather than logging this output to files. The `port:=(number)` argument allows you to set the port (the default is 8765).
-
-## 2.3. Install Foxglove Studio on macOS
-
-- Download and install Foxglove Studio for macOS from https://foxglove.dev/download  
-- Or use the web version at https://studio.foxglove.dev
-
-## 2.4. Connect Foxglove Studio to Your ROS VM
-
-1. Find your VM's IP address by running on your host:  
-   ```bash
-   multipass list
-   ```
-2. Open Foxglove Studio (desktop or web).  
-3. Click "Open connection" and select "Foxglove WebSocket".  
-4. Enter the WebSocket URL:  
-   `ws://<VM-IP>:8765` (replace `<VM-IP>` with your VM's IP, remember that you can find it by running `multipass list` outside your VM).
-5. Connect and start visualizing your ROS topics.
-
-## 2.5. Troubleshooting
-
-- If you cannot connect, ensure the bridge is running and port 8765 is accessible.  
-- Multipass uses NAT networking; if connection fails from host, try the web app inside the VM or set up port forwarding.  
-- Foxglove Studio requires creating a free account and organization on first use.  
-- Use the shared folder (if set up) to save and share layouts or data between host and VM.
-
----
-
-# 3. Setting Up Video Stream from Alphabot2 to MacOS, using Foxglove
-
-## 3.1. Install the Foxglove Bridge in Alphabot
-
-Access the Alphabot using ssh:
-```bash
-ssh alphabot2@192.168.28.54
-```
-
-If you haven't previously, install Foxglove bridge using:
-```bash
-sudo apt install ros-noetic-foxglove-bridge
-```
-
-Then, launch the foxglove_bridge using:
-```bash
-roslaunch foxglove_bridge foxglove_bridge.launch
-```
-
-The robot is now streaming the topics running inside it (usually in port 8765).
-
-## 3.2. Start camera (Streaming images example specific)
-
-The robot is streaming the topics but the camera hasn't been started yet so let's do it using commands:
-
-```bash
-source ~/catkin_ws/devel/setup.bash
-roslaunch raspicam_node camerav2_1280x960.launch
-```
-
-Now, the robot is streaming the images and we only need to collect them on the MacOS side
-
-## 3.3. Install Foxglove Studio on macOS
-
-- Download and install Foxglove Studio for macOS from https://foxglove.dev/download  
-- Or use the web version at https://studio.foxglove.dev
-
-## 3.4. Stream images in Foxglove
-
-Open Foxglove studio and click on `Open connection...`. Then, input `ws://192.168.28.54:8765` into the WebSocket URL box and click `Open`.
-
-You should now be able to see the images being streamed on the up-right corner.
-
----
-
-> 📷 You can now stream images to MacOS from the Alphabot using Foxglove. You can follow the same process to access any topic you launched on Alphabot in MacOS.
+José Mariano
