@@ -129,7 +129,7 @@ def calibrate_camera_angle():
             elif channel == 1:  # Tilt servo (vertical)
                 # Compensate for 45° down offset - add 45° to center (assuming down is positive)
                 # Down is positive
-                compensated_angle = angle - 45
+                compensated_angle = angle - 27
             else:
                 rospy.logerr(f"[ERROR] Invalid servo channel: {channel}")
                 return

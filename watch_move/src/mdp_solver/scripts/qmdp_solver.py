@@ -6,20 +6,23 @@ from alphabot_driver.AlphaBot import AlphaBot
 from alphabot_driver.PCA9685 import PCA9685
 from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
+import datetime
 
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
-LINEAR_SPEED  = 0.14       # m/s
+LINEAR_SPEED  = 0.25       # m/s
 ANGULAR_SPEED = math.pi/2*1.7 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
-TURN_TIME_90  = (math.pi/2) / ANGULAR_SPEED
-MOTOR_PWM     = 12       # wheel PWM
-CORRECTION_FACTOR = 1.05 # correction factor for motor PWM to match speed
+TURN_TIME_90  = (math.pi/2)*1.04 / ANGULAR_SPEED
+MOTOR_PWM     = 21    # wheel PWM
+MOTOR_PWM_ROTATE = 12 # wheel PWM for rotation
+CORRECTION_FACTOR = 0.96 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2
 
 current_orientation = 0  # 0=east,1=north,2=west,3=south
 current_marker = 0  # 0=right side of the square, 1=above the square, 2=left side of the square, 3=below the square
 current_z = 0.0  # z coordinate of the current marker
+current_distance = 0.0  # distance to the current marker
 
 # Hardware
 Ab  = AlphaBot()
@@ -47,17 +50,32 @@ grid = [
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
-    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
-    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
-    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
-    [1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
-    [1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
-start, goal = (1,1), (9,11)
-checkpoints = [(1,6,0), (10,6,3), (9,11,0), (2, 10, 0), (18,13,0), (15, 21, 0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+# grid = [
+#     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+#     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+#     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
+#     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
+#     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
+#     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+#     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+#     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+#     [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+#     [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+#     ]
+
+start, goal = (1,1), (9,13)
+checkpoints = [(1,6,0), (10,6,3), (9,13,0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
@@ -100,16 +118,16 @@ def send_action(a_idx):
 
     if diff == 1:
         current_orientation = (current_orientation + 1) % 4
-        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM_ROTATE); Ab.setPWMB(MOTOR_PWM_ROTATE)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 2:
         current_orientation = (current_orientation + 2) % 4
-        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM_ROTATE); Ab.setPWMB(MOTOR_PWM_ROTATE)
         Ab.left(); rospy.sleep(TURN_TIME_90)
         Ab.left(); rospy.sleep(TURN_TIME_90); Ab.stop()
     elif diff == 3:
         current_orientation = (current_orientation - 1) % 4
-        Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
+        Ab.setPWMA(MOTOR_PWM_ROTATE); Ab.setPWMB(MOTOR_PWM_ROTATE)
         Ab.right(); rospy.sleep(TURN_TIME_90); Ab.stop()
     heading = desired
 
@@ -171,11 +189,12 @@ def update_grid_probabilities(grid_probabilities):
     print("[INFO] Wait:", wait_variable)
 
     if not wait_variable:
-        global marker_exists, new_belief_updater, current_marker, current_z
+        global marker_exists, new_belief_updater, current_marker, current_z, current_distance
         current_marker = int(grid_probabilities.header.frame_id)
         print(f"[INFO] Received grid probabilities for marker {current_marker}")
         # Extract z position from timestamp (stored as nanoseconds)
         current_z = grid_probabilities.header.stamp.nsecs / 1e6
+        current_distance = grid_probabilities.header.stamp.secs / 1e6
         rospy.loginfo("Current z position: %f", current_z)
         belief_updater = length_belief.copy()
         new_belief_updater = np.zeros(len(length_belief), dtype=float)
@@ -199,7 +218,7 @@ def update_grid_probabilities(grid_probabilities):
 
 
 def angle_correction(believed_position):
-    global current_orientation, current_marker, current_z
+    global current_orientation, current_marker, current_z, current_distance
 
     marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
     marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0] + marker_orientation_dictionary[marker_ori][0]
@@ -209,12 +228,14 @@ def angle_correction(believed_position):
     x_global = believed_position[0] + 0.5 - marker_x
 
     print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
-    ratio_1 = current_z / distance if distance != 0 else 0
+    ratio_1 = current_z / current_distance if current_distance != 0 else 0
     if ratio_1 > 1:
+        rospy.logwarn("[WARNING] AVISAR GABRIEL")
         ratio_1 = 1
     theta_1 = math.acos(ratio_1)
     ratio_2 = x_global / distance if distance != 0 else 0
     if ratio_2 > 1:
+        rospy.logwarn("[WARNING] AVISAR GABRIEL")
         ratio_2 = 1
     theta_2 = math.acos(ratio_2)
 
@@ -260,10 +281,11 @@ def main():
     rospy.init_node('qmdp_controller')
     
     # Open files for writing
-    belief_file = open("belief_positions.txt", "w")
-    most_likely_file = open("most_likely_positions.txt", "w")
-    actions_file = open("actions_taken.txt", "w")
-    entropy_file = open("entropy_values.txt", "w")
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    belief_file = open(f"belief_positions_{timestamp}.txt", "w")
+    most_likely_file = open(f"most_likely_positions_{timestamp}.txt", "w")
+    actions_file = open(f"actions_taken_{timestamp}.txt", "w")
+    entropy_file = open(f"entropy_values_{timestamp}.txt", "w")
     
     cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
@@ -401,13 +423,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-
-

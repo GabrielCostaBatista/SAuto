@@ -15,9 +15,11 @@ def annular_sector(center, r_inner, r_outer, angle_start, angle_end, num_points=
     if angle_end < angle_start:
         angle_end += 360
 
+    rospy.loginfo(f"Creating annular sector from {angle_start}° to {angle_end}° with inner radius {r_inner} and outer radius {r_outer}")
     
-    angles = np.linspace(np.radians(angle_start), np.radians(angle_end), num_points)
-    outer = [(cx + r_outer*np.cos(a), cy + r_outer*np.sin(a)) for a in angles]
+    angles = np.linspace(np.radians(angle_start + 45), np.radians(angle_end - 45), num_points)
+    
+    outer = [((cx + r_outer*np.cos(a), cy + r_outer*np.sin(a))) for a in angles]
     inner = [(cx + r_inner*np.cos(a), cy + r_inner*np.sin(a)) for a in angles[::-1]]
     return ShapelyPolygon(outer + inner)
 
@@ -182,7 +184,7 @@ class RobotLocalizer:
 
             marker_distances = [pair[0] for pair in self.distances[observed_marker_id]]
             distance = np.mean(marker_distances)
-            distance_error = max(np.std(marker_distances), MIN_DISTANCE_ERROR) * RADIUS_N_STD_DEV
+            distance_error = max(np.std(marker_distances, ddof=1), MIN_DISTANCE_ERROR) * RADIUS_N_STD_DEV
 
             x_min = int(global_marker_pos[0] - distance)
             x_max = int(global_marker_pos[0] + distance)
@@ -199,11 +201,11 @@ class RobotLocalizer:
                 x_max = global_marker_pos[0]
 
             # Angles in the usual frame instead of our x,y definition
-            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 1) % 4) * 90, angle_end = ((global_marker_pos[2] + 3) % 4) * 90)
+            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 1) % 4 + 1) * 90, angle_end = ((global_marker_pos[2] + 3) % 4 + 1) * 90)
             # sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = 90, angle_end = 270)
 
-            angle_start = ((global_marker_pos[2] + 2) % 4) * 90
-            angle_end = ((global_marker_pos[2]) % 4) * 90
+            angle_start = ((global_marker_pos[2] + 2) % 4 + 1) * 90
+            angle_end = ((global_marker_pos[2]) % 4 + 1) * 90
             #rospy.loginfo("angles = %s , %s", angle_start, angle_end)
             # Create Polygon message to publish probabilities
             probability_map = PolygonStamped()
@@ -211,9 +213,10 @@ class RobotLocalizer:
             probability_map.header.frame_id = str(observed_marker_id)
             distances_list = [pair[0] for pair in self.distances[observed_marker_id]]
             z_list = [pair[2] for pair in self.distances[observed_marker_id]]
+            mean_distance = np.mean(distances_list)
             mean_z = np.mean(z_list)
             #rospy.loginfo(f"Mean z value for marker {observed_marker_id}: {mean_z:.3f}")
-            probability_map.header.stamp = rospy.Time(secs=0, nsecs=int(mean_z * 1e6))
+            probability_map.header.stamp = rospy.Time(secs=int(mean_distance * 1e6), nsecs=int(mean_z * 1e6))
 
             for x in np.linspace(x_min, x_max, num = x_max - x_min + 1):
                 if x < 0:
