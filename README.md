@@ -1,6 +1,6 @@
-# ROS Noetic on macOS with Multipass & Foxglove Setup Guide
+# Autonomous Systems Final Project: Maze Solving with AlphaBot2
 
-This guide covers setting up ROS Noetic on macOS using Multipass virtualization and configuring Foxglove.
+This guide covers the entirety of the folders for the project.
 
 ## Table of Contents
 
