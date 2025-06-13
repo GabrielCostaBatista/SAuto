@@ -167,11 +167,14 @@ def send_action(a_idx):
         
     return (bp[0]+dr, bp[1]+dc)
 
+
 def detect_checkpoint(coord):
     return coord in maze.checkpoints
 
+
 def check_goal(coord):
     return coord == maze.goal
+
 
 def pick_waypoint():
     if controller.belief.max() < THRESH:
@@ -182,6 +185,7 @@ def pick_waypoint():
         )
         return cps_sorted[0]
     return maze.goal
+
 
 def belief_to_grid(belief):
     belief_grid = np.zeros((len(grid), len(grid[0])), dtype=float)
@@ -195,6 +199,7 @@ def belief_to_grid(belief):
                 belief_grid[i][j] = -1.0  # Mark walls with -1
                 
     return belief_grid
+
 
 # Updates belief based on grid probabilities given by the distance to the detected marker
 def update_grid_probabilities(grid_probabilities):
@@ -244,15 +249,8 @@ def angle_correction(believed_position):
     x_global = believed_position[0] + 0.5 - marker_x
 
     print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
-    ratio_1 = current_z / current_distance if current_distance != 0 else 0
-    ratio_1 = current_z / current_distance if current_distance != 0 else 0
-    if ratio_1 > 1:
-        ratio_1 = 1
-    theta_1 = math.acos(ratio_1)
-    ratio_2 = x_global / distance if distance != 0 else 0
-    if ratio_2 > 1:
-        ratio_2 = 1
-    theta_2 = math.acos(ratio_2)
+    theta_1 = math.acos(current_z / current_distance) if current_distance != 0 else 0
+    theta_2 = math.acos(x_global / distance) if distance != 0 else 0
 
     if marker_ori == 0:
         theta_2 -= math.pi / 2
