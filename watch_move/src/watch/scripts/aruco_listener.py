@@ -40,7 +40,7 @@ class ArucoListener:
             qz = msg.pose.orientation.z
             qw = msg.pose.orientation.w
             
-            # Here you can add your custom logic based on the marker data
+            # Process the marker data if needed
             # self.process_marker_data(marker_id, x, y, z)
             
         except ValueError as e:
@@ -61,6 +61,8 @@ class ArucoListener:
         # Example: Different behaviors based on marker ID
         if marker_id == 0:
             rospy.loginfo(f"Marker 0 detected - Wall at position ({x:.3f}, {y:.3f}, {z:.3f})!")
+        elif marker_id == 1:
+            rospy.loginfo(f"Marker 1 detected - Watching the goal at position ({x:.3f}, {y:.3f}, {z:.3f})!")
         else:
             rospy.loginfo(f"Localization marker {marker_id} detected - General processing")
 
