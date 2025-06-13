@@ -23,6 +23,7 @@ current_orientation = 0  # 0=east,1=north,2=west,3=south
 current_marker = 0  # 0=right side of the square, 1=above the square, 2=left side of the square, 3=below the square
 current_z = 0.0  # z coordinate of the current marker
 current_distance = 0.0  # distance to the current marker
+current_distance = 0.0  # distance to the current marker
 
 # Hardware
 Ab  = AlphaBot()
@@ -33,6 +34,8 @@ global wait_variable
 wait_variable = True 
 
 # Maze and checkpointsMore actions
+
+"""
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -58,6 +61,22 @@ grid = [
     [1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
+"""
+
+grid = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    ]
 
 # grid = [
 #     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -190,10 +209,12 @@ def update_grid_probabilities(grid_probabilities):
 
     if not wait_variable:
         global marker_exists, new_belief_updater, current_marker, current_z, current_distance
+        global marker_exists, new_belief_updater, current_marker, current_z, current_distance
         current_marker = int(grid_probabilities.header.frame_id)
         print(f"[INFO] Received grid probabilities for marker {current_marker}")
         # Extract z position from timestamp (stored as nanoseconds)
         current_z = grid_probabilities.header.stamp.nsecs / 1e6
+        current_distance = grid_probabilities.header.stamp.secs / 1e6
         current_distance = grid_probabilities.header.stamp.secs / 1e6
         rospy.loginfo("Current z position: %f", current_z)
         belief_updater = length_belief.copy()
@@ -219,6 +240,7 @@ def update_grid_probabilities(grid_probabilities):
 
 def angle_correction(believed_position):
     global current_orientation, current_marker, current_z, current_distance
+    global current_orientation, current_marker, current_z, current_distance
 
     marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
     marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0] + marker_orientation_dictionary[marker_ori][0]
@@ -229,12 +251,15 @@ def angle_correction(believed_position):
 
     print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
     ratio_1 = current_z / current_distance if current_distance != 0 else 0
+    ratio_1 = current_z / current_distance if current_distance != 0 else 0
     if ratio_1 > 1:
+        rospy.logwarn("[WARNING] AVISAR GABRIEL")
         rospy.logwarn("[WARNING] AVISAR GABRIEL")
         ratio_1 = 1
     theta_1 = math.acos(ratio_1)
     ratio_2 = x_global / distance if distance != 0 else 0
     if ratio_2 > 1:
+        rospy.logwarn("[WARNING] AVISAR GABRIEL")
         rospy.logwarn("[WARNING] AVISAR GABRIEL")
         ratio_2 = 1
     theta_2 = math.acos(ratio_2)
