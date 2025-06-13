@@ -40,7 +40,7 @@ NUM_FRAMES_TO_AVERAGE = rospy.get_param('~num_frames_to_average', 10)
 # Minimum distance error to consider
 MEASUREMENT_ERROR = 0.10 # meters
 
-MIN_DISTANCE_ERROR = MEASUREMENT_ERROR / CELL_SIZE  # in cell units, e.g. 0.010m / 0.25m = 0.04 cells
+MIN_DISTANCE_ERROR = MEASUREMENT_ERROR / CELL_SIZE  # in cell units, e.g. 0.10m / 0.25m = 0.04 cells
 
 
 class RobotLocalizer:
@@ -53,14 +53,12 @@ class RobotLocalizer:
         # Data storage
         self.global_markers = {}  # marker_id -> (x, y, orientation) in world coordinates
         self.protected_marker_positions = {}  # marker_id -> (x, y) for protected markers
-        # self.robot_observations = {}  # marker_id -> (x, y, z) robot's observation of marker
         self.distances = {}  # marker_id -> list of [distance, timestamp] pairs
         
-        # Initialize protected marker positions (you can modify these as needed)
-        # For now, setting some default positions - you should update these with actual positions
+        # Initialize protected marker positions
         for marker_id in PROTECTED_MARKERS:
             self.protected_marker_positions[marker_id] = (0.0, 0.0)  # Default to origin
-            rospy.loginfo(f"Protected marker {marker_id} initialized at (0.0, 0.0) - update as needed")
+            rospy.loginfo(f"Protected marker {marker_id} initialized at (0.0, 0.0)")
         
         # Robot pose estimate
         self.robot_pose = PoseStamped()
@@ -102,8 +100,7 @@ class RobotLocalizer:
                 rospy.logwarn(f"Invalid frame_id format: {msg.header.frame_id}")
                 return
 
-            # Store robot's observation of this marker
-    
+            # Store robot's observation of this marker    
             timestamp = msg.header.stamp
 
             # Compute distance for grid probabilities
@@ -167,20 +164,18 @@ class RobotLocalizer:
                 x_max = global_marker_pos[0]
 
             # Angles in the usual frame instead of our x,y definition
-            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = ((global_marker_pos[2] + 1) % 4 + 1) * 90, angle_end = ((global_marker_pos[2] + 3) % 4 + 1) * 90)
-
             angle_start = ((global_marker_pos[2] + 2) % 4 + 1) * 90
             angle_end = ((global_marker_pos[2]) % 4 + 1) * 90
+            sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = angle_start, angle_end = angle_end)
+
             # Create Polygon message to publish probabilities
             probability_map = PolygonStamped()
             probability_map.header = Header()
             probability_map.header.frame_id = str(observed_marker_id)
-            distances_list = [pair[0] for pair in self.distances[observed_marker_id]]
             z_list = [pair[2] for pair in self.distances[observed_marker_id]]
-            mean_distance = np.mean(distances_list)
             mean_z = np.mean(z_list)
             #rospy.loginfo(f"Mean z value for marker {observed_marker_id}: {mean_z:.3f}")
-            probability_map.header.stamp = rospy.Time(secs=int(mean_distance * 1e6), nsecs=int(mean_z * 1e6))
+            probability_map.header.stamp = rospy.Time(secs=int(distance * 1e6), nsecs=int(mean_z * 1e6))
 
             for x in np.linspace(x_min, x_max, num = x_max - x_min + 1):
                 if x < 0:
