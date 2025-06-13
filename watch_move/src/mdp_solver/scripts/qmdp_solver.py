@@ -71,7 +71,7 @@ grid = [
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
@@ -340,9 +340,6 @@ def main():
     signal.signal(signal.SIGTERM, shutdown)
     believed_path = []
 
-    waypoint = goal
-    path     = maze.shortest_path(controller.get_believed_position(), waypoint)
-    actions  = maze.coords_to_actions(path)
     coord = start
     believed_position = start
     entropy_bot = controller.belief_entropy()
@@ -361,30 +358,19 @@ def main():
             current_believed_pos = controller.get_believed_position()
             rospy.loginfo("Reset belief to start position: %s", current_believed_pos)
         
-        # Plan path from current believed position
-        waypoint = goal
-        path = maze.shortest_path(current_believed_pos, waypoint)
-        actions = maze.coords_to_actions(path)
-        
-        # Debug: Check if path planning failed
-        if not path:
-            rospy.logerr("ERROR: No path found from %s to %s!", current_believed_pos, waypoint)
-            rospy.loginfo("Maze start: %s, goal: %s", maze.start, maze.goal)
-            break
-        if not actions:
-            rospy.logerr("ERROR: No actions generated from path %s!", path)
-            break
+        # Use QMDP controller to select action
+        a_idx = controller.select_action()
+        action = controller.mdp.actions[a_idx]
             
-        # log current belief and planned target
+        # log current belief and selected action
         belief_list = controller.belief
         belief_grid = belief_to_grid(belief_list)
         belief_file.write(f"{belief_grid}\n\n")
         most_likely_file.write(f"{controller.get_believed_position()}\n")
-        actions_file.write(f"{actions[0]}\n")
+        actions_file.write(f"{action}\n")
         entropy_file.write(f"{entropy_bot}\n")
-        rospy.loginfo("Believed pos = %s → waypoint %s",
-                      current_believed_pos, waypoint)
-        rospy.loginfo("Executing action = %s", actions[0])
+        rospy.loginfo("Believed pos = %s", current_believed_pos)
+        rospy.loginfo("Executing action = %s", action)
 
         print("Marker exists:", marker_exists)
         # if at a checkpoint, relocalise & replan
@@ -398,10 +384,7 @@ def main():
             believed_path.append(believed_position)
             rospy.loginfo("[INFO] Correcting angle based on marker position")
             angle_correction(believed_position)
-            a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
-            path     = maze.shortest_path(coord, waypoint)
-            actions  = maze.coords_to_actions(path)
             entropy_bot = controller.belief_entropy()
 
             marker_exists = False
@@ -409,7 +392,6 @@ def main():
 
         # otherwise predict belief forward
         else:
-            a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             controller.predict_belief(a_idx)
             
@@ -417,11 +399,7 @@ def main():
             coord = controller.get_believed_position()
             believed_path.append(coord)
             
-            waypoint = pick_waypoint()
-            path     = maze.shortest_path(coord, waypoint)
-            actions  = maze.coords_to_actions(path)
             entropy_bot = controller.belief_entropy()
-            rospy.sleep(1.0)
             rospy.sleep(1.0)
 
         

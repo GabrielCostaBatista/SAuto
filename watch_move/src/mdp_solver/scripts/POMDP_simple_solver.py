@@ -43,37 +43,6 @@ class Maze:
                 self.grid[ni, nj] == 0):
                 yield (ni, nj)
 
-    def shortest_path(self, start, goal):
-        """
-        BFS to find the shortest path of coords from start→goal.
-        Uses only numpy and Python lists (no deque).
-        Returns list of (r,c). Empty if no path.
-        """
-        # frontier holds coords to explore
-        frontier = [start]
-        # map each visited coord to its predecessor
-        prev = {start: None}
-
-        while frontier:
-            u = frontier.pop(0)   # pop from head
-            if u == goal:
-                break
-            for v in self.neighbors(u):
-                if v not in prev:
-                    prev[v] = u
-                    frontier.append(v)
-
-        if goal not in prev:
-            return []  # no path found
-
-        # reconstruct path by walking backwards
-        path = []
-        node = goal
-        while node is not None:
-            path.append(node)
-            node = prev[node]
-        return path[::-1]
-
     def coords_to_actions(self, path):
         """
         Convert a coord path [(r0,c0),(r1,c1),...] to actions ['up',...].
@@ -130,7 +99,7 @@ class MDP:
                     elif b in sides:
                         prob = self.slip / 2  # slip to sides only
                     else:
-                        prob = 0  # no slip backwards or staying
+                        prob = 0 
                     
                     if prob > 0:
                         di, dj = directions[b]
@@ -202,7 +171,6 @@ class QMDPController:
         spreading_factor = 0.15  # Controls how much spreading to add
         action = self.mdp.actions[action_idx]
         
-        # Create directional spreading kernel
         forward_spread = np.zeros_like(b_pred)
         directions = {'up':(-1,0), 'down':(1,0), 'left':(0,-1), 'right':(0,1)}
         dr, dc = directions[action]
