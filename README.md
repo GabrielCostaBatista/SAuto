@@ -2,21 +2,16 @@
 
 This guide covers the entirety of the folders for the project.
 
+The folder watch_move/src has all the codes developed. Following is the guide for each.
+
 ## Table of Contents
 
-- [1. Installing Multipass and ROS Noetic on macOS](#1-installing-multipass-and-ros-noetic-on-macos)
-  - [1.1. Install Multipass on macOS](#11-install-multipass-on-macos)
-  - [1.2. Install ROS Noetic inside the Ubuntu 20.04 VM](#12-install-ros-noetic-inside-the-ubuntu-2004-vm)
-  - [1.3. Optional (Deprecated): Mount a Shared Folder Between macOS and the VM](#13-optional-deprecated-mount-a-shared-folder-between-macos-and-the-vm)
-  - [1.4. Fixing catkin_make errors by using VSCode remote instead of shared folder](#14-fixing-catkin_make-errors-by-using-vscode-remote-instead-of-shared-folder)
-  - [1.5. Additional Tips](#15-additional-tips)
-- [2. Setting Up Foxglove Studio with ROS Noetic (VM to MacOS)](#2-setting-up-foxglove-studio-with-ros-noetic-vm-to-macos)
-  - [2.1. Install the Foxglove Bridge in ROS VM](#21-install-the-foxglove-bridge-in-ros-vm)
-  - [2.2. Launch the Foxglove Bridge](#22-launch-the-foxglove-bridge)
-  - [2.3. Install Foxglove Studio on macOS](#23-install-foxglove-studio-on-macos)
-  - [2.4. Connect Foxglove Studio to Your ROS VM](#24-connect-foxglove-studio-to-your-ros-vm)
-  - [2.5. Troubleshooting](#25-troubleshooting)
-- [3. Setting Up Video Stream from Alphabot2 to MacOS, using Foxglove](#3-setting-up-video-stream-from-alphabot2-to-macos-using-foxglove)
+- [1. mdp_solver: Algorithm development and AlphaBot2 integration](#1-mdp_solver-algorithm-development-alphabot2-integration)
+  - [1.1. Launch Files](#11-launch-files)
+  - [1.2. Scripts: Algorithms](#12-scripts-algorithms)
+  - [1.3. Scripts: AlphaBot2 integration](#13-scripts-alphabot2-integration)
+- [2. move: First test of AlphaBot2 movement](#2-move-first-test-of-alphabot2-movement)
+- [3. watch: Camera and ArUco Detection](#3-watch-camera-and-aruco-detection)
   - [3.1. Install the Foxglove Bridge in Alphabot](#31-install-the-foxglove-bridge-in-alphabot)
   - [3.2. Start camera (Streaming images example specific)](#32-start-camera-streaming-images-example-specific)
   - [3.3. Install Foxglove Studio on macOS](#33-install-foxglove-studio-on-macos)
@@ -24,74 +19,20 @@ This guide covers the entirety of the folders for the project.
 
 ---
 
-# 1. Installing Multipass and ROS Noetic on macOS
+# 1. mdp_solver: Algorithm development and AlphaBot2 integration
 
-This guide explains how to install Multipass on macOS and set up ROS Noetic inside an Ubuntu 20.04 Multipass VM, following the ROS installation tutorial for Ubuntu 20.04 from https://varhowto.com/install-ros-noetic-ubuntu-20-04.
+This folder contains the files for the implementation of all algorithms. All important files will be mentioned with their purpose.
 
-## 1.1. Install Multipass on macOS
+## 1.1. Launch files
 
-Multipass allows you to run Ubuntu VMs easily on macOS.
+mdp_solver.launch: File to launch the file that integrates the AlphaBot2 and the MDP algorithm so that it may run on the AlphaBot2
 
-### Steps:
+qmdp_solver.launch: File to launch the file that integrates the AlphaBot2 and the QMDP algorithm so that it may run on the AlphaBot2
 
-1. Download and install Multipass from the official site: https://multipass.run/
 
-2. Verify installation by opening Terminal and running:  
-   ```bash
-   multipass version
-   ```
+## 1.2. Scripts: Algorithms
 
-3. Launch an Ubuntu 20.04 VM (name it ros1-vm):  
-   ```bash
-   multipass launch 20.04 --name ros1-vm --memory 4G --disk 40G
-   ```
 
-4. Access the VM shell:  
-   ```bash
-   multipass shell ros1-vm
-   ```
-
-## 1.2. Install ROS Noetic inside the Ubuntu 20.04 VM
-
-Follow the steps below inside the VM shell (ros1-vm):
-
-### Step 1:  Set up ROS Noetic repo for Ubuntu 20.04 
-```bash
-echo "deb http://packages.ros.org/ros/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/ros-focal.list
-```
-
-### Step 2: Set up your keys  
-```bash
-sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
-```
-
-### Step 3: Update package index  
-```bash
-sudo apt update
-```
-
-### Step 4: Install ROS Noetic Desktop Full  
-```bash
-sudo apt install ros-noetic-desktop-full -y
-```
-
-### Step 5: Environment setup  
-Add the ROS environment variables to your bash session:  
-```bash
-source /opt/ros/noetic/setup.bash  
-echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
-source ~/.bashrc
-```
-
-### Step 6: Verify Noetic installation
-```bash
-roscd
-```
-This should take you to `/opt/ros/noetic`.
-```bash
-roscore
-```
-If no errors appear everything should be ok.
 
 ## 1.3. Optional (Deprecated): Mount a Shared Folder Between macOS and the VM
 
