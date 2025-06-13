@@ -8,6 +8,9 @@ from POMDP_simple_solver import Maze, MDP, QMDPController
 import numpy as np
 import datetime
 
+# This file runs the QMDP algorithm in the real robot given a known maze
+
+# parameters used
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
 LINEAR_SPEED  = 0.25       # m/s
 ANGULAR_SPEED = math.pi/2*1.7 # rad/s for 90°
@@ -17,7 +20,7 @@ MOTOR_PWM     = 21    # wheel PWM
 MOTOR_PWM_ROTATE = 12 # wheel PWM for rotation
 CORRECTION_FACTOR = 0.96 # correction factor for motor PWM to match speed
 
-NUM_PROTECTED_MARKERS = 2
+NUM_PROTECTED_MARKERS = 2 # protects start and goal markers
 
 current_orientation = 0  # 0=east,1=north,2=west,3=south
 current_marker = 0  # 0=right side of the square, 1=above the square, 2=left side of the square, 3=below the square
@@ -35,6 +38,8 @@ wait_variable = True
 
 # Maze and checkpointsMore actions
 
+# Mazes grid
+# Old maze
 """
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -62,7 +67,7 @@ grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 """
-
+# New maze (smaller)
 grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
@@ -78,22 +83,9 @@ grid = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     ]
 
-# grid = [
-#     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-#     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
-#     [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
-#     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
-#     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
-#     [1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1],
-#     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
-#     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
-#     [1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
-#     [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-#     [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-#     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-#     ]
 
-start, goal = (1,1), (9,13)
+start, goal = (1,1), (9,13) # start and goal coordinates
+# markers coordinates
 checkpoints = [(1,6,0), (10,6,3), (9,13,0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
@@ -164,7 +156,7 @@ def send_action(a_idx):
 
     # return the *actual* coordinate (for checkpoint/goal checks)
     # here we assume perfect odometry: map heading+movement to grid:
-    #   convert believed_position + action → new coord
+    #  convert believed_position + action → new coord
     bp = controller.get_believed_position()
     dr, dc = {'up':(-1,0),'down':(1,0),
                 'left':(0,-1),'right':(0,1)}[action]
@@ -204,6 +196,7 @@ def belief_to_grid(belief):
                 
     return belief_grid
 
+# Updates belief based on grid probabilities given by the distance to the detected marker
 def update_grid_probabilities(grid_probabilities):
     print("[INFO] Wait:", wait_variable)
 
@@ -238,6 +231,7 @@ def update_grid_probabilities(grid_probabilities):
         marker_exists = True
 
 
+# Corrects angle if robot is not following a straight path 
 def angle_correction(believed_position):
     global current_orientation, current_marker, current_z, current_distance
     global current_orientation, current_marker, current_z, current_distance
@@ -253,14 +247,10 @@ def angle_correction(believed_position):
     ratio_1 = current_z / current_distance if current_distance != 0 else 0
     ratio_1 = current_z / current_distance if current_distance != 0 else 0
     if ratio_1 > 1:
-        rospy.logwarn("[WARNING] AVISAR GABRIEL")
-        rospy.logwarn("[WARNING] AVISAR GABRIEL")
         ratio_1 = 1
     theta_1 = math.acos(ratio_1)
     ratio_2 = x_global / distance if distance != 0 else 0
     if ratio_2 > 1:
-        rospy.logwarn("[WARNING] AVISAR GABRIEL")
-        rospy.logwarn("[WARNING] AVISAR GABRIEL")
         ratio_2 = 1
     theta_2 = math.acos(ratio_2)
 
@@ -270,7 +260,6 @@ def angle_correction(believed_position):
         theta_2 -= 3 * math.pi / 2
     elif marker_ori == 3:
         theta_2 -= math.pi
-    # theta_2 -= ((1 - marker_ori) * math.pi / 2)
 
     theta = theta_2 - theta_1
 
@@ -281,7 +270,7 @@ def angle_correction(believed_position):
         theta = -theta
 
     theta = ((current_orientation - marker_ori) % 4) * 90 + theta
-
+    # only allows correction angle to be in [-180,180] degrees
     if theta > 180:
         theta -= 360
     elif theta < -180:
@@ -409,7 +398,7 @@ def main():
             controller.relocalise(new_belief_updater)
             rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
-            rospy.loginfo("[INFOOOOO] Correcting angle based on marker position")
+            rospy.loginfo("[INFO] Correcting angle based on marker position")
             angle_correction(believed_position)
             a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
