@@ -3,13 +3,12 @@
 #######################
 
 import numpy as np
-# import matplotlib.pyplot as plt
-# from PIL import Image
+import matplotlib.pyplot as plt
 
 
 
 ###################
-# Maze Definition #
+# Maze Definition (1 represent walls and 0 the space the robot can walk in)#
 ###################
 
 maze = np.array([
@@ -22,18 +21,15 @@ maze = np.array([
 ], dtype=int)
 
 
-"""
-img = Image.open("path/to/your/file.png").convert('L')
-arr = np.array(img)
-# black (< threshold) → 1; white (≥ threshold) → 0
-maze = (arr < 150).astype(int)
 
-self.n_rows, n_cols = maze.shape
-start = (0, 0)                # In this case, the robot starts at the top left corner
-goal  = (0, n_cols-1)         # In this case, the robot starts at the top right corner
+n_rows, n_cols = maze.shape
+start = (0, 0)                # Defining the robot starting point. In this case, the robot starts at the top left corner. 
+goal  = (0, n_cols-1)         # Defining the goal of the robot
 
-print(maze)
-"""
+ 
+
+
+
 
 
 #################
