@@ -114,7 +114,7 @@ def set_servo_angle(pwm_controller, channel, angle):
     elif channel == 1:  # Tilt servo (vertical)
         # Compensate for 45° down offset - add 45° to center (assuming down is positive)
         # Down is positive
-        compensated_angle = angle - 27
+        compensated_angle = angle - 70
     else:
         rospy.logerr(f"[ERROR] Invalid servo channel: {channel}")
         return

@@ -43,6 +43,37 @@ class Maze:
                 self.grid[ni, nj] == 0):
                 yield (ni, nj)
 
+    def shortest_path(self, start, goal):
+        """
+        BFS to find the shortest path of coords from start→goal.
+        Uses only numpy and Python lists (no deque).
+        Returns list of (r,c). Empty if no path.
+        """
+        # frontier holds coords to explore
+        frontier = [start]
+        # map each visited coord to its predecessor
+        prev = {start: None}
+
+        while frontier:
+            u = frontier.pop(0)   # pop from head
+            if u == goal:
+                break
+            for v in self.neighbors(u):
+                if v not in prev:
+                    prev[v] = u
+                    frontier.append(v)
+
+        if goal not in prev:
+            return []  # no path found
+
+        # reconstruct path by walking backwards
+        path = []
+        node = goal
+        while node is not None:
+            path.append(node)
+            node = prev[node]
+        return path[::-1]
+
     def coords_to_actions(self, path):
         """
         Convert a coord path [(r0,c0),(r1,c1),...] to actions ['up',...].

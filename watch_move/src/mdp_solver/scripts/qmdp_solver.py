@@ -12,19 +12,19 @@ import datetime
 
 # parameters used
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
-LINEAR_SPEED  = 0.25       # m/s
+LINEAR_SPEED  = 0.16       # m/s
 ANGULAR_SPEED = math.pi/2*1.7 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2)*1.04 / ANGULAR_SPEED
-MOTOR_PWM     = 21    # wheel PWM
+MOTOR_PWM     = 12    # wheel PWM
 MOTOR_PWM_ROTATE = 12 # wheel PWM for rotation
-CORRECTION_FACTOR = 0.96 # correction factor for motor PWM to match speed
+CORRECTION_FACTOR = 1.03 # correction factor for motor PWM to match speed
 
 NUM_PROTECTED_MARKERS = 2 # protects start and goal markers
 
 current_orientation = 0  # 0=east,1=north,2=west,3=south
 current_marker = 0  # 0=right side of the square, 1=above the square, 2=left side of the square, 3=below the square
-current_z = 0.0  # z coordinate of the current marker
+current_x = 0.0  # z coordinate of the current marker
 current_distance = 0.0  # distance to the current marker
 current_distance = 0.0  # distance to the current marker
 
@@ -84,9 +84,9 @@ grid = [
     ]
 
 
-start, goal = (1,1), (9,13) # start and goal coordinates
+start, goal = (1,1), (9,11) # start and goal coordinates
 # markers coordinates
-checkpoints = [(1,6,0), (10,6,3), (9,13,0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
+checkpoints = [(1,6,0), (10,6,3), (9,11,0)] # Row, Column, Orientation (0: right side of the square, 1: above the square, 2: left side of the square, 3: below the square)
 
 marker_orientation_dictionary = {0: (0.5, 1), 1: (0, 0.5), 2: (0.5, 0), 3: (1, 0.5)} # Orientation to (x/row, y/column) offset for marker position or {0: (0.5, 0), 1: (0, -0.5), 2: (-0.5, 0), 3: (0, 0.5)}
 
@@ -206,15 +206,17 @@ def update_grid_probabilities(grid_probabilities):
     print("[INFO] Wait:", wait_variable)
 
     if not wait_variable:
-        global marker_exists, new_belief_updater, current_marker, current_z, current_distance
-        global marker_exists, new_belief_updater, current_marker, current_z, current_distance
+        global marker_exists, new_belief_updater, current_marker, current_x, current_distance
+        global marker_exists, new_belief_updater, current_marker, current_x, current_distance
         current_marker = int(grid_probabilities.header.frame_id)
         print(f"[INFO] Received grid probabilities for marker {current_marker}")
-        # Extract z position from timestamp (stored as nanoseconds)
-        current_z = grid_probabilities.header.stamp.nsecs / 1e6
+        # Extract x position from timestamp (stored as nanoseconds)
+        current_x = grid_probabilities.header.stamp.nsecs / 1e6
+        if current_x > 500:
+            current_x -= 1000
         current_distance = grid_probabilities.header.stamp.secs / 1e6
         current_distance = grid_probabilities.header.stamp.secs / 1e6
-        rospy.loginfo("Current z position: %f", current_z)
+        rospy.loginfo("Current x position: %f", current_x)
         belief_updater = length_belief.copy()
         new_belief_updater = np.zeros(len(length_belief), dtype=float)
         for idx, cell in enumerate(grid_probabilities.polygon.points):
@@ -238,34 +240,47 @@ def update_grid_probabilities(grid_probabilities):
 
 # Corrects angle if robot is not following a straight path 
 def angle_correction(believed_position):
-    global current_orientation, current_marker, current_z, current_distance
-    global current_orientation, current_marker, current_z, current_distance
+    global current_orientation, current_marker, current_x, current_distance
+    global current_orientation, current_marker, current_x, current_distance
 
     marker_ori = checkpoints[current_marker - NUM_PROTECTED_MARKERS][2]
     marker_x = checkpoints[current_marker - NUM_PROTECTED_MARKERS][0] + marker_orientation_dictionary[marker_ori][0]
     marker_y = checkpoints[current_marker - NUM_PROTECTED_MARKERS][1] + marker_orientation_dictionary[marker_ori][1]
 
     distance = math.sqrt((believed_position[0] + 0.5 - marker_x) ** 2 + (believed_position[1] + 0.5 - marker_y) ** 2)
-    x_global = believed_position[0] + 0.5 - marker_x
+    distance_marker_plane = None
 
-    print(f"Current_z: {current_z}, Distance to marker: {distance}, x_global: {x_global}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
-    theta_1 = math.acos(current_z / current_distance) if current_distance != 0 else 0
-    theta_2 = math.acos(x_global / distance) if distance != 0 else 0
+    # Calculate distance in the marker plane based on orientation
+    if marker_ori == 0 or marker_ori == 2:
+        distance_marker_plane = believed_position[0] + 0.5 - marker_x
+    elif marker_ori == 1 or marker_ori == 3:
+        distance_marker_plane = believed_position[1] + 0.5 - marker_y
+    else:
+        rospy.logerr("Invalid marker orientation: %d", marker_ori)
+        return
 
-    if marker_ori == 0:
-        theta_2 -= math.pi / 2
-    elif marker_ori == 2:
-        theta_2 -= 3 * math.pi / 2
-    elif marker_ori == 3:
-        theta_2 -= math.pi
+    if marker_ori < 2:
+        distance_marker_plane = -distance_marker_plane
 
-    theta = theta_2 - theta_1
+    print(f"current_x: {current_x}, Distance to marker: {distance}, Distance in the marker plane: {distance_marker_plane}, Current orientation: {current_orientation}, Marker orientation: {marker_ori}")
+    theta_1 = math.asin(current_x / current_distance) if current_distance != 0 else 0
+    theta_2 = math.asin(distance_marker_plane / distance) if distance != 0 else 0
+
+    # if marker_ori == 0:
+    #     theta_2 -= math.pi / 2
+    # elif marker_ori == 2:
+    #     theta_2 -= 3 * math.pi / 2
+    # elif marker_ori == 3:
+    #     theta_2 -= math.pi
+
+    # theta = theta_2 - theta_1
+
+    theta = theta_1 + theta_2
 
     # Convert theta to degrees
     theta = math.degrees(theta)
 
-    if believed_position[1] + 0.5 - marker_y < 0:
-        theta = -theta
+    theta = -theta
 
     theta = ((current_orientation - marker_ori) % 4) * 90 + theta
     # only allows correction angle to be in [-180,180] degrees
@@ -276,9 +291,9 @@ def angle_correction(believed_position):
 
     print(f"Theta correction: {theta} degrees, current orientation: {current_orientation}, marker orientation: {marker_ori}. Theta1: {math.degrees(theta_1)}, Theta2: {math.degrees(theta_2)}")
 
-    if abs(theta) > 1 and current_z < 7:
+    if abs(theta) > 1 and current_distance > 1:
         rospy.logwarn("Angle correction needed: %f degrees", theta)
-        if theta > 0:
+        if theta < 0:
             # Rotate right
             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
             Ab.right(); rospy.sleep(TURN_TIME_90 * (theta / 90)); Ab.stop()
@@ -340,6 +355,9 @@ def main():
     signal.signal(signal.SIGTERM, shutdown)
     believed_path = []
 
+    waypoint = goal
+    path     = maze.shortest_path(controller.get_believed_position(), waypoint)
+    actions  = maze.coords_to_actions(path)
     coord = start
     believed_position = start
     entropy_bot = controller.belief_entropy()
@@ -358,19 +376,29 @@ def main():
             current_believed_pos = controller.get_believed_position()
             rospy.loginfo("Reset belief to start position: %s", current_believed_pos)
         
-        # Use QMDP controller to select action
-        a_idx = controller.select_action()
-        action = controller.mdp.actions[a_idx]
+        # Plan path from current believed position
+        waypoint = goal
+        path = maze.shortest_path(current_believed_pos, waypoint)
+        actions = maze.coords_to_actions(path)
+        
+        # Debug: Check if path planning failed
+        if not path:
+            rospy.logerr("ERROR: No path found from %s to %s!", current_believed_pos, waypoint)
+            rospy.loginfo("Maze start: %s, goal: %s", maze.start, maze.goal)
+            break
+        if not actions:
+            rospy.logerr("ERROR: No actions generated from path %s!", path)
+            break
             
-        # log current belief and selected action
+        # log current belief and planned target
         belief_list = controller.belief
         belief_grid = belief_to_grid(belief_list)
         belief_file.write(f"{belief_grid}\n\n")
         most_likely_file.write(f"{controller.get_believed_position()}\n")
-        actions_file.write(f"{action}\n")
+        actions_file.write(f"{actions[0]}\n")
         entropy_file.write(f"{entropy_bot}\n")
-        rospy.loginfo("Believed pos = %s", current_believed_pos)
-        rospy.loginfo("Executing action = %s", action)
+        rospy.loginfo("Believed pos = %s → waypoint %s", current_believed_pos, waypoint)
+        rospy.loginfo("Executing action = %s", actions[0])
 
         print("Marker exists:", marker_exists)
         # if at a checkpoint, relocalise & replan
@@ -384,7 +412,10 @@ def main():
             believed_path.append(believed_position)
             rospy.loginfo("[INFO] Correcting angle based on marker position")
             angle_correction(believed_position)
+            a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
+            path     = maze.shortest_path(coord, waypoint)
+            actions  = maze.coords_to_actions(path)
             entropy_bot = controller.belief_entropy()
 
             marker_exists = False
@@ -392,6 +423,7 @@ def main():
 
         # otherwise predict belief forward
         else:
+            a_idx = controller.mdp.actions.index(actions[0])
             coord = send_action(a_idx)
             controller.predict_belief(a_idx)
             
@@ -399,10 +431,24 @@ def main():
             coord = controller.get_believed_position()
             believed_path.append(coord)
             
+            waypoint = pick_waypoint()
+            path     = maze.shortest_path(coord, waypoint)
+            actions  = maze.coords_to_actions(path)
             entropy_bot = controller.belief_entropy()
+            rospy.sleep(1.0)
             rospy.sleep(1.0)
 
         
+    rospy.loginfo("Arrived at goal %s", goal)
+    rospy.loginfo("Final believed path: %s", believed_path)
+    belief_file.close()
+    most_likely_file.close()
+    actions_file.close()
+    entropy_file.close()
+    shutdown()
+
+if __name__ == '__main__':
+    main()
     rospy.loginfo("Arrived at goal %s", goal)
     rospy.loginfo("Final believed path: %s", believed_path)
     belief_file.close()

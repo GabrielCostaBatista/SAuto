@@ -118,7 +118,7 @@ class RobotLocalizer:
             if marker_id not in self.distances:
                 self.distances[marker_id] = []
 
-            self.distances[marker_id].append([distance, timestamp, z_cell_normalized])
+            self.distances[marker_id].append([distance, timestamp, x_cell_normalized])
 
             if len(self.distances[marker_id]) == NUM_FRAMES_TO_AVERAGE:
                 # Compute grid probabilities based on this marker observation
@@ -164,18 +164,18 @@ class RobotLocalizer:
                 x_max = global_marker_pos[0]
 
             # Angles in the usual frame instead of our x,y definition
-            angle_start = ((global_marker_pos[2] + 2) % 4 + 1) * 90
-            angle_end = ((global_marker_pos[2]) % 4 + 1) * 90
+            angle_start = ((global_marker_pos[2] + 1) % 4 + 1) * 90
+            angle_end = ((global_marker_pos[2] + 3) % 4 + 1) * 90
             sector = annular_sector(center=(global_marker_pos[0], global_marker_pos[1]), r_inner = distance - distance_error, r_outer = distance + distance_error, angle_start = angle_start, angle_end = angle_end)
 
             # Create Polygon message to publish probabilities
             probability_map = PolygonStamped()
             probability_map.header = Header()
             probability_map.header.frame_id = str(observed_marker_id)
-            z_list = [pair[2] for pair in self.distances[observed_marker_id]]
-            mean_z = np.mean(z_list)
-            #rospy.loginfo(f"Mean z value for marker {observed_marker_id}: {mean_z:.3f}")
-            probability_map.header.stamp = rospy.Time(secs=int(distance * 1e6), nsecs=int(mean_z * 1e6))
+            x_list = [pair[2] for pair in self.distances[observed_marker_id]]
+            mean_x = np.mean(x_list)
+            rospy.loginfo(f"Mean x value for marker {observed_marker_id}: {mean_x:.3f}")
+            probability_map.header.stamp = rospy.Time(secs=int(distance * 1e6), nsecs=int(mean_x * 1e6))
 
             for x in np.linspace(x_min, x_max, num = x_max - x_min + 1):
                 if x < 0:
