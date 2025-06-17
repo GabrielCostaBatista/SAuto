@@ -12,8 +12,8 @@ import datetime
 
 # parameters used
 CELL_SIZE     = rospy.get_param('~cell_size', 0.30)      # m per cell
-LINEAR_SPEED  = 0.16       # m/s
-ANGULAR_SPEED = math.pi/2*1.7 # rad/s for 90°
+LINEAR_SPEED  = 0.14       # m/s
+ANGULAR_SPEED = math.pi/2*1.6 # rad/s for 90°
 CELL_TIME     = CELL_SIZE / LINEAR_SPEED
 TURN_TIME_90  = (math.pi/2)*1.04 / ANGULAR_SPEED
 MOTOR_PWM     = 12    # wheel PWM
@@ -296,11 +296,11 @@ def angle_correction(believed_position):
         if theta < 0:
             # Rotate right
             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
-            Ab.right(); rospy.sleep(TURN_TIME_90 * (theta / 90)); Ab.stop()
+            Ab.right(); rospy.sleep(TURN_TIME_90 * (-theta / 90)); Ab.stop()
         else:
             # Rotate left
             Ab.setPWMA(MOTOR_PWM*CORRECTION_FACTOR); Ab.setPWMB(MOTOR_PWM)
-            Ab.left(); rospy.sleep(TURN_TIME_90 * (-theta / 90)); Ab.stop()
+            Ab.left(); rospy.sleep(TURN_TIME_90 * (theta / 90)); Ab.stop()
 
 
 def main():
@@ -404,11 +404,11 @@ def main():
         # if at a checkpoint, relocalise & replan
         if marker_exists == True:
             idx = maze.coord_to_state(coord)
-            rospy.loginfo("Previous belief: \n%s\n", belief_grid)
-            rospy.loginfo("Marker belief: %s",belief_to_grid(new_belief_updater))
+            # rospy.loginfo("Previous belief: \n%s\n", belief_grid)
+            # rospy.loginfo("Marker belief: %s",belief_to_grid(new_belief_updater))
             believed_position = controller.get_believed_position()
             controller.relocalise(new_belief_updater)
-            rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
+            # rospy.loginfo("Relocalised to %s with belief %s", believed_position, controller.belief)
             believed_path.append(believed_position)
             rospy.loginfo("[INFO] Correcting angle based on marker position")
             angle_correction(believed_position)
